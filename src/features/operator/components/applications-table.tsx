@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import type { ApplicationSummary } from "../actions";
 import { InviteActions } from "./invite-actions";
-import { ApplicationBadge, FormBadge, VerificationBadge } from "./status-badges";
+import { ApplicationBadge, FormBadge, PayoutBadge, VerificationBadge } from "./status-badges";
 
 const dateFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -40,6 +40,7 @@ export function ApplicationsTable({ applications }: { applications: ApplicationS
             <TableHead>Verification</TableHead>
             <TableHead className="hidden sm:table-cell">Details</TableHead>
             <TableHead>Application</TableHead>
+            <TableHead className="hidden lg:table-cell">Payouts</TableHead>
             <TableHead className="text-right">Invite</TableHead>
           </TableRow>
         </TableHeader>
@@ -64,6 +65,9 @@ export function ApplicationsTable({ applications }: { applications: ApplicationS
                   submitted={application.applicationSubmitted}
                   approved={application.approved}
                 />
+              </TableCell>
+              <TableCell className="hidden lg:table-cell">
+                <PayoutBadge status={application.payouts} />
               </TableCell>
               <TableCell>
                 <InviteActions merchantId={application.merchantId} />

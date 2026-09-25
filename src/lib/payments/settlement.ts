@@ -4,7 +4,7 @@ import { paymentsRequest } from "./client";
 /** Chain → address, e.g. `{ solana: "…" }`. */
 export type SettlementAddresses = Record<string, string>;
 
-type RawSettlementAddresses = Record<string, unknown> | undefined;
+export type RawSettlementAddresses = Record<string, unknown> | undefined;
 
 // `settlementAddresses` also carries metadata alongside the per-chain addresses.
 const NON_CHAIN_KEYS = new Set([
@@ -14,7 +14,7 @@ const NON_CHAIN_KEYS = new Set([
   "directVendor",
 ]);
 
-function chainAddresses(raw: RawSettlementAddresses): SettlementAddresses {
+export function chainAddresses(raw: RawSettlementAddresses): SettlementAddresses {
   return Object.fromEntries(
     Object.entries(raw ?? {}).filter(
       (entry): entry is [string, string] =>

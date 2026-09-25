@@ -21,8 +21,18 @@ import {
   getSubmerchant,
   listSubmerchants,
 } from "@/lib/payments/submerchants";
+import {
+  chainAddresses,
+  getSettlementAddresses,
+  type RawSettlementAddresses,
+} from "@/lib/payments/settlement";
 import type { CreateSubmerchantInput } from "@/lib/payments/types";
 import { endOperatorSession, isOperator, startOperatorSession } from "@/lib/session";
+import {
+  alignSettlementWithParent,
+  payoutStatus,
+  type PayoutStatus,
+} from "@/lib/settlement-setup";
 
 async function requireOperator() {
   if (!(await isOperator())) redirect("/operator");
@@ -57,6 +67,7 @@ export type ApplicationSummary = {
   onboardingFormSubmitted: boolean;
   applicationSubmitted: boolean;
   approved: boolean;
+  payouts: PayoutStatus;
 };
 
 type ListedSubmerchant = {
@@ -66,12 +77,20 @@ type ListedSubmerchant = {
   verification?: { status?: string };
   goLiveChecklist?: { onboardingFormSubmitted?: boolean; applicationSubmitted?: boolean };
   blocked?: unknown;
+  settlementAddresses?: RawSettlementAddresses;
 };
+
+async function listSubmerchantRecords(): Promise<ListedSubmerchant[]> {
+  return (await listSubmerchants({ limit: 100 })) as unknown as ListedSubmerchant[];
+}
 
 /** Only the fields the operator table shows — the raw records include API keys. */
 export async function listApplications(): Promise<ApplicationSummary[]> {
   await requireOperator();
-  const submerchants = (await listSubmerchants({ limit: 100 })) as unknown as ListedSubmerchant[];
+  const [submerchants, parent] = await Promise.all([
+    listSubmerchantRecords(),
+    getSettlementAddresses(),
+  ]);
   return submerchants
     .map((submerchant) => ({
       merchantId: submerchant.merchantId,
@@ -81,8 +100,43 @@ export async function listApplications(): Promise<ApplicationSummary[]> {
       onboardingFormSubmitted: Boolean(submerchant.goLiveChecklist?.onboardingFormSubmitted),
       applicationSubmitted: Boolean(submerchant.goLiveChecklist?.applicationSubmitted),
       approved: !submerchant.blocked,
+      payouts: payoutStatus({
+        approved: !submerchant.blocked,
+        parent,
+        child: chainAddresses(submerchant.settlementAddresses),
+      }),
     }))
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+}
+
+/**
+ * Coinflow sends no webhook when an admin approves an account, so each visit
+ * to the operator screen points newly approved businesses' settlement at The
+ * Za's wallet. Only approved accounts with a missing address are touched.
+ */
+export async function sweepSettlements(): Promise<{ configured: string[]; failed: string[] }> {
+  await requireOperator();
+  const [submerchants, parent] = await Promise.all([
+    listSubmerchantRecords(),
+    getSettlementAddresses(),
+  ]);
+
+  const needsSetup = submerchants.filter((submerchant) => {
+    const child = chainAddresses(submerchant.settlementAddresses);
+    return payoutStatus({ approved: !submerchant.blocked, parent, child }) === "missing";
+  });
+
+  const configured: string[] = [];
+  const failed: string[] = [];
+  for (const submerchant of needsSetup) {
+    const state = await alignSettlementWithParent({
+      submerchantId: submerchant.merchantId,
+      parent,
+      child: chainAddresses(submerchant.settlementAddresses),
+    });
+    (state === "configured" ? configured : failed).push(submerchant.merchantId);
+  }
+  return { configured, failed };
 }
 
 export async function getInviteUrl(merchantId: string): Promise<string> {

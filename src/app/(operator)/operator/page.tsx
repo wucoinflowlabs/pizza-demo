@@ -5,6 +5,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { listApplications, signOutOperator } from "@/features/operator/actions";
 import { ApplicationsTable } from "@/features/operator/components/applications-table";
 import { OperatorSignIn } from "@/features/operator/components/operator-sign-in";
+import { SettlementSweep } from "@/features/operator/components/settlement-sweep";
 import { isOperator } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Businesses" };
@@ -36,6 +37,9 @@ export default async function OperatorPage() {
         </div>
       </div>
       <ApplicationsTable applications={applications} />
+      <SettlementSweep
+        pending={applications.filter((application) => application.payouts === "missing").length}
+      />
     </div>
   );
 }

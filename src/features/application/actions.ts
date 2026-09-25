@@ -21,11 +21,13 @@ import {
   getSubmerchantProgress,
   type SubmerchantProgress,
 } from "@/lib/payments/verification";
-import {
-  getSettlementAddresses,
-  setSubmerchantSettlementAddress,
-} from "@/lib/payments/settlement";
 import { getCurrentAccountId } from "@/lib/session";
+import {
+  alignSettlementWithParent,
+  type SettlementSetupState,
+} from "@/lib/settlement-setup";
+
+export type { SettlementSetupState };
 
 type Failure = { ok: false; message: string; fieldErrors?: FieldErrors };
 
@@ -158,66 +160,9 @@ export async function submitApplication(): Promise<
   }
 }
 
-export type SettlementSetupState =
-  | "configured"
-  | "pending_approval"
-  | "conflict"
-  | "unavailable"
-  | "error";
-
-type ChainOutcome = Exclude<SettlementSetupState, "unavailable">;
-
-// Worst outcome wins, so one failing chain isn't hidden behind another that succeeded.
-const SEVERITY: ChainOutcome[] = ["error", "conflict", "pending_approval", "configured"];
-
-async function settleChain({
-  accountId,
-  blockchain,
-  address,
-  current,
-}: {
-  accountId: string;
-  blockchain: string;
-  address: string;
-  current?: string;
-}): Promise<ChainOutcome> {
-  if (current === address) return "configured";
-  if (current) return "conflict";
-  try {
-    await setSubmerchantSettlementAddress({ submerchantId: accountId, blockchain, address });
-    return "configured";
-  } catch (err) {
-    if (err instanceof PaymentsError && err.code === "PENDING_APPROVAL") return "pending_approval";
-    if (err instanceof PaymentsError && err.code === "SETTLEMENT_ALREADY_SET") return "conflict";
-    console.error(`[settlement] setting ${blockchain} failed`, err);
-    return "error";
-  }
-}
-
-/**
- * Points the sub-merchant's settlement at The Za's own settlement wallet(s),
- * chain by chain. Safe to call repeatedly: already-matching chains are skipped.
- */
+/** Points this business's settlement at The Za's wallet(s); see alignSettlementWithParent. */
 export async function setupSettlement(): Promise<{ state: SettlementSetupState }> {
   const accountId = await getCurrentAccountId();
   if (!accountId) return { state: "error" };
-
-  try {
-    const [parent, child] = await Promise.all([
-      getSettlementAddresses(),
-      getSettlementAddresses(accountId),
-    ]);
-    const chains = Object.entries(parent);
-    if (!chains.length) return { state: "unavailable" };
-
-    const outcomes = await Promise.all(
-      chains.map(([blockchain, address]) =>
-        settleChain({ accountId, blockchain, address, current: child[blockchain] }),
-      ),
-    );
-    return { state: SEVERITY.find((outcome) => outcomes.includes(outcome)) ?? "error" };
-  } catch (err) {
-    console.error("[settlement] setup failed", err);
-    return { state: "error" };
-  }
+  return { state: await alignSettlementWithParent({ submerchantId: accountId }) };
 }

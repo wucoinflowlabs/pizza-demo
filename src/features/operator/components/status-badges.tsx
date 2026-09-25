@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import type { PayoutStatus } from "@/lib/settlement-setup";
 
 const VERIFICATION_LABELS: Record<string, { label: string; tone: "default" | "secondary" | "outline" | "destructive" }> = {
   approved: { label: "Verified", tone: "default" },
@@ -22,6 +23,22 @@ export function ApplicationBadge({
   if (approved) return <Badge>Approved</Badge>;
   if (submitted) return <Badge variant="secondary">Under review</Badge>;
   return <Badge variant="outline">Not submitted</Badge>;
+}
+
+const PAYOUT_LABELS: Record<
+  PayoutStatus,
+  { label: string; tone: "default" | "secondary" | "outline" | "destructive" }
+> = {
+  set: { label: "The Za wallet", tone: "default" },
+  missing: { label: "Setting up", tone: "secondary" },
+  waiting: { label: "After approval", tone: "outline" },
+  conflict: { label: "Other wallet", tone: "destructive" },
+  unavailable: { label: "No Za wallet", tone: "outline" },
+};
+
+export function PayoutBadge({ status }: { status: PayoutStatus }) {
+  const { label, tone } = PAYOUT_LABELS[status];
+  return <Badge variant={tone}>{label}</Badge>;
 }
 
 export function FormBadge({ submitted }: { submitted: boolean }) {
