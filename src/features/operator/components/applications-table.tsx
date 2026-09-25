@@ -1,6 +1,3 @@
-import Link from "next/link";
-import { PlusIcon } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -12,20 +9,16 @@ import {
 } from "@/components/ui/table";
 import type { ApplicationSummary } from "../actions";
 import { InviteActions } from "./invite-actions";
-import { ApplicationBadge, FormBadge, PayoutBadge, VerificationBadge } from "./status-badges";
-
-const dateFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+import { ApplicationBadge, PayoutBadge } from "./status-badges";
 
 export function ApplicationsTable({ applications }: { applications: ApplicationSummary[] }) {
   if (!applications.length)
     return (
       <Card>
         <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-          <p className="text-muted-foreground">No businesses yet.</p>
-          <Link href="/operator/new" className={buttonVariants()}>
-            <PlusIcon data-icon="inline-start" />
-            Onboard a business
-          </Link>
+          <p className="text-muted-foreground">
+            No applications yet. Enable payment processing for a customer above to start one.
+          </p>
         </CardContent>
       </Card>
     );
@@ -36,11 +29,8 @@ export function ApplicationsTable({ applications }: { applications: ApplicationS
         <TableHeader>
           <TableRow>
             <TableHead>Business</TableHead>
-            <TableHead className="hidden md:table-cell">Created</TableHead>
-            <TableHead>Verification</TableHead>
-            <TableHead className="hidden sm:table-cell">Details</TableHead>
             <TableHead>Application</TableHead>
-            <TableHead className="hidden lg:table-cell">Payouts</TableHead>
+            <TableHead className="hidden sm:table-cell">Payouts</TableHead>
             <TableHead className="text-right">Invite</TableHead>
           </TableRow>
         </TableHeader>
@@ -51,22 +41,13 @@ export function ApplicationsTable({ applications }: { applications: ApplicationS
                 <div className="font-medium">{application.merchantId}</div>
                 <div className="text-xs text-muted-foreground">{application.email}</div>
               </TableCell>
-              <TableCell className="hidden md:table-cell text-muted-foreground">
-                {application.createdAt ? dateFormat.format(new Date(application.createdAt)) : "—"}
-              </TableCell>
-              <TableCell>
-                <VerificationBadge status={application.verificationStatus} />
-              </TableCell>
-              <TableCell className="hidden sm:table-cell">
-                <FormBadge submitted={application.onboardingFormSubmitted} />
-              </TableCell>
               <TableCell>
                 <ApplicationBadge
                   submitted={application.applicationSubmitted}
                   approved={application.approved}
                 />
               </TableCell>
-              <TableCell className="hidden lg:table-cell">
+              <TableCell className="hidden sm:table-cell">
                 <PayoutBadge status={application.payouts} />
               </TableCell>
               <TableCell>

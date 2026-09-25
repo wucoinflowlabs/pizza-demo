@@ -1,18 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import type { PayoutStatus } from "@/lib/settlement-setup";
 
-const VERIFICATION_LABELS: Record<string, { label: string; tone: "default" | "secondary" | "outline" | "destructive" }> = {
-  approved: { label: "Verified", tone: "default" },
-  partialApproval: { label: "Owners pending", tone: "secondary" },
-  pending: { label: "Not verified", tone: "outline" },
-  rejected: { label: "Rejected", tone: "destructive" },
-};
-
-export function VerificationBadge({ status }: { status: string }) {
-  const { label, tone } = VERIFICATION_LABELS[status] ?? { label: status, tone: "outline" as const };
-  return <Badge variant={tone}>{label}</Badge>;
-}
-
 export function ApplicationBadge({
   submitted,
   approved,
@@ -39,12 +27,4 @@ const PAYOUT_LABELS: Record<
 export function PayoutBadge({ status }: { status: PayoutStatus }) {
   const { label, tone } = PAYOUT_LABELS[status];
   return <Badge variant={tone}>{label}</Badge>;
-}
-
-export function FormBadge({ submitted }: { submitted: boolean }) {
-  return (
-    <Badge variant={submitted ? "default" : "outline"}>
-      {submitted ? "Details complete" : "Details in progress"}
-    </Badge>
-  );
 }

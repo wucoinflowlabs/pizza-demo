@@ -99,16 +99,23 @@ function CreatedCard({ created, onReset }: { created: Created; onReset: () => vo
           Onboard another
         </Button>
         <Link href="/operator" className={buttonVariants({ variant: "ghost" })}>
-          All businesses
+          All customers
         </Link>
       </CardFooter>
     </Card>
   );
 }
 
-export function NewApplicationForm() {
+export function NewApplicationForm({
+  customerName,
+  prefill = PREFILLED_VALUES,
+}: {
+  /** The Adora customer being onboarded, when started from their row on /operator. */
+  customerName?: string;
+  prefill?: FormValues;
+}) {
   const [email, setEmail] = useState(PREFILLED_EMAIL);
-  const [values, setValues] = useState<FormValues>(PREFILLED_VALUES);
+  const [values, setValues] = useState<FormValues>(prefill);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string>();
   const [created, setCreated] = useState<Created>();
@@ -157,7 +164,7 @@ export function NewApplicationForm() {
         onReset={() => {
           setCreated(undefined);
           setEmail(PREFILLED_EMAIL);
-          setValues(PREFILLED_VALUES);
+          setValues(prefill);
           setFormKey((key) => key + 1);
         }}
       />
@@ -167,7 +174,9 @@ export function NewApplicationForm() {
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">Onboard a business</h1>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            Enable payment processing{customerName && ` for ${customerName}`}
+          </h1>
           <p className="text-sm text-muted-foreground">
             Fill in what Adora already knows. The business only handles verification and the
             questions only they can answer.
