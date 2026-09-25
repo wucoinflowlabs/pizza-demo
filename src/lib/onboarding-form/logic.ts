@@ -1,4 +1,9 @@
-import { FIELD_DEFINITIONS, FIELD_NAMES } from "./definitions";
+import {
+  FIELD_DEFINITIONS,
+  FIELD_NAMES,
+  FIXED_FIELDS,
+  WEBSITE_URL_COPIES,
+} from "./definitions";
 import type {
   ConditionalRule,
   FieldDefinition,
@@ -175,6 +180,16 @@ export function sanitizeFormValues(input: unknown): FormValues {
       urlFields.has(name) && typeof value === "string" ? normalizeUrl(value) : value;
   }
   return result;
+}
+
+/** Adds the answers The Za hardcodes, with the testing URL and policy links set to the website URL. */
+export function withFixedFields(values: FormValues): FormValues {
+  const website = values.websiteUrl;
+  const websiteCopies =
+    typeof website === "string" && website
+      ? Object.fromEntries(WEBSITE_URL_COPIES.map((name) => [name, website]))
+      : {};
+  return { ...values, ...websiteCopies, ...FIXED_FIELDS };
 }
 
 /** Drops empty strings/arrays so drafts don't overwrite stored answers with blanks. */

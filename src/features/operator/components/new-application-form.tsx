@@ -40,6 +40,18 @@ import {
 
 type Created = Extract<CreateApplicationResult, { ok: true }>;
 
+// Demo prefill: every field stays editable.
+const PREFILLED_EMAIL = "chris@coinflowlabs.app";
+const PREFILLED_VALUES: FormValues = {
+  dba: "Giordano's Pizza",
+  businessPhoneCountryCode: "+1",
+  businessPhoneNumber: "(312) 555-0147",
+  businessEmail: "chris@coinflowlabs.app",
+  billingEmail: "chris@coinflowlabs.app",
+  whatDoesYourBusinessDo: "The best deep dish in chicago",
+  websiteUrl: "https://giordanos.com/",
+};
+
 function CreatedCard({ created, onReset }: { created: Created; onReset: () => void }) {
   return (
     <Card>
@@ -95,8 +107,8 @@ function CreatedCard({ created, onReset }: { created: Created; onReset: () => vo
 }
 
 export function NewApplicationForm() {
-  const [email, setEmail] = useState("");
-  const [values, setValues] = useState<FormValues>({ businessPhoneCountryCode: "+1" });
+  const [email, setEmail] = useState(PREFILLED_EMAIL);
+  const [values, setValues] = useState<FormValues>(PREFILLED_VALUES);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string>();
   const [created, setCreated] = useState<Created>();
@@ -144,8 +156,8 @@ export function NewApplicationForm() {
         created={created}
         onReset={() => {
           setCreated(undefined);
-          setEmail("");
-          setValues({ businessPhoneCountryCode: "+1" });
+          setEmail(PREFILLED_EMAIL);
+          setValues(PREFILLED_VALUES);
           setFormKey((key) => key + 1);
         }}
       />

@@ -2,10 +2,10 @@
 
 import {
   FIELD_NAMES,
-  FIXED_FIELDS,
   hasValue,
   sanitizeFormValues,
   validateForm,
+  withFixedFields,
   withoutEmptyValues,
   type FieldErrors,
   type FormValues,
@@ -61,7 +61,7 @@ export async function saveDetailsDraft(values: unknown): Promise<{ ok: true } | 
   try {
     await saveOnboardingDraft({
       submerchantId: accountId,
-      fields: { ...withoutEmptyValues(sanitizeFormValues(values)), ...FIXED_FIELDS },
+      fields: withFixedFields(withoutEmptyValues(sanitizeFormValues(values))),
     });
     return { ok: true };
   } catch (err) {
@@ -107,11 +107,11 @@ export async function submitDetails(
 
   try {
     const stored = sanitizeFormValues(await getOnboardingForm(accountId));
-    const merged: FormValues = { ...stored, ...answers, ...FIXED_FIELDS };
+    const merged: FormValues = { ...stored, ...answers };
     for (const [name, value] of Object.entries(answers))
       if (!hasValue(value)) delete merged[name];
 
-    await submitOnboardingForm({ submerchantId: accountId, fields: merged });
+    await submitOnboardingForm({ submerchantId: accountId, fields: withFixedFields(merged) });
     return { ok: true, progress: await getSubmerchantProgress(accountId) };
   } catch (err) {
     if (err instanceof PaymentsError && err.code === "INVALID_FIELDS") {

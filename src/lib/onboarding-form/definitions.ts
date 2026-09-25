@@ -1,20 +1,9 @@
-import type { FieldDefinition, SelectOption } from "./types";
+import type { FieldDefinition, FormValues, SelectOption } from "./types";
 
 // Mirrors the provider's LEGACY v2 onboarding form (labels, order, sections
-// and show/hide rules) for the industries this app supports. Deliberate
-// differences: crypto and third-party-branded payment options are omitted,
-// settlement is always to a bank account, and provider names are reworded.
-
-export const SUPPORTED_INDUSTRY_OPTIONS: readonly SelectOption[] = [
-  { label: "Education & Training", value: "educationTraining" },
-  { label: "Food & Beverage", value: "foodBeverage" },
-  { label: "Healthcare & Wellness", value: "healthcareWellness" },
-  { label: "Non-Profit", value: "nonProfit" },
-  { label: "Professional Services", value: "professionalServices" },
-  { label: "Technology & Digital Services", value: "technologyDigitalServices" },
-  { label: "Travel & Hospitality", value: "travelHospitality" },
-  { label: "Other", value: "other" },
-];
+// and show/hide rules). Deliberate differences: crypto and third-party-branded
+// payment options are omitted, provider names are reworded, and answers that
+// are the same for every pizzeria are hardcoded in FIXED_FIELDS instead of asked.
 
 const YES_NO: readonly SelectOption[] = [
   { label: "Yes", value: "yes" },
@@ -34,40 +23,34 @@ export const REGION_OPTIONS: readonly SelectOption[] = [
   "Africa",
 ].map((region) => ({ label: region, value: region }));
 
-const PAYIN_METHOD_OPTIONS: readonly SelectOption[] = [
-  { value: "card", label: "Credit & Debit Cards" },
-  { value: "applePay", label: "Apple Pay" },
-  { value: "googlePay", label: "Google Pay" },
-  { value: "ach", label: "ACH (Automated Clearing House) - US Bank Pay-In" },
-  { value: "fasterPayments", label: "UK Faster Payments - UK Bank Pay-In" },
-  { value: "sepa", label: "SEPA (Single Euro Payments Area) - Euro Bank Pay-In" },
-  { value: "pix", label: "PIX - Brazil Bank Pay-In" },
-  { value: "cashApp", label: "Pay with CashApp" },
-  { value: "interac", label: "Interac e-Transfer - Canada Bank Pay-In" },
-  { value: "paypal", label: "Pay with PayPal" },
-  { value: "venmo", label: "Pay with Venmo" },
-];
+/** Always sent and never asked: the same for every pizzeria on The Za. */
+export const FIXED_FIELDS = {
+  settlementMethods: "bankAccountSettlement",
+  industry: "foodBeverage",
+  products: "checkout,userPayouts",
+  bankSettlementMethods: "ach",
+  businessCountryOfIncorporation: "US",
+  endUserGeoDistribution: [{ region: "US", percentage: 100 }],
+  activeCustomers: "<10,000",
+  customerSupportMethods: "live",
+  payinMethods: "card,googlePay,applePay,venmo,paypal,cashApp",
+  payinsMonthlyVolume: { currency: "usd", amount: 10_000 },
+  payinsAverageTransactionSize: { currency: "usd", amount: 60 },
+  payinsMaximumTransactionSize: { currency: "usd", amount: 5_000 },
+  // Venmo, PayPal, push to card, ACH and RTP.
+  payoutMethods: "venmo,paypal,card,standard,asap",
+  payoutsMonthlyVolume: { currency: "usd", amount: 10_000 },
+  payoutsAverageTransactionSize: { currency: "usd", amount: 60 },
+  payoutsMaximumTransactionSize: { currency: "usd", amount: 5_000 },
+} satisfies FormValues;
 
-const PAYOUT_METHOD_OPTIONS: readonly SelectOption[] = [
-  { value: "standard", label: "ACH (Automated Clearing House) - US Bank Pay-Outs" },
-  { value: "asap", label: "RTP (Real-Time Payments) - Instant US Bank Pay-Outs" },
-  {
-    value: "iban",
-    label:
-      "SEPA (Single Euro Payments Area) & UK Faster Payments - Euro Bank Pay-Outs & Instant UK Bank Pay-Outs",
-  },
-  { value: "eft", label: "EFT (Electronic Funds Transfer) - Canada Bank Pay-Outs" },
-  { value: "pix", label: "PIX - Instant Brazil Bank Pay-Outs" },
-  { value: "card", label: "Push to Card - Instant Debit Card Pay-Outs" },
-  { value: "venmo", label: "Venmo - Venmo Account Pay-Outs" },
-  { value: "paypal", label: "PayPal - PayPal Account Pay-Outs" },
-  { value: "wire", label: "US Domestic Wire Transfers" },
-  { value: "interac", label: "Interac - Canadian Interac Account Pay-Outs" },
-  { value: "swift", label: "SWIFT - International Wire Pay-Outs" },
-];
-
-/** Always sent: this app only offers settlement to a bank account. */
-export const FIXED_FIELDS = { settlementMethods: "bankAccountSettlement" } as const;
+/** Also never asked: the testing URL and every policy link are the business's website. */
+export const WEBSITE_URL_COPIES = [
+  "developmentUrl",
+  "privacyPolicyUrl",
+  "termsOfServiceUrl",
+  "returnPolicyUrl",
+] as const;
 
 const chainedUrls = ({
   prefix,
@@ -99,36 +82,7 @@ const chainedUrls = ({
   }));
 };
 
-const money = ({
-  name,
-  label,
-  placeholder,
-  product,
-}: {
-  name: string;
-  label: string;
-  placeholder: string;
-  product: "checkout" | "userPayouts";
-}): FieldDefinition => ({
-  name,
-  type: "money-amount",
-  label,
-  placeholder,
-  required: true,
-  audience: "platform",
-  conditional: { dependsOn: "products", value: product },
-});
-
 export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
-  {
-    name: "industry",
-    type: "select",
-    label: "Industry",
-    placeholder: "Select your industry",
-    required: true,
-    audience: "platform",
-    options: SUPPORTED_INDUSTRY_OPTIONS,
-  },
   {
     name: "dba",
     type: "text",
@@ -184,15 +138,6 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     placeholder: "Enter your website URL",
     sectionHeader: "Production Website URLs",
     firstRequired: true,
-  }),
-  ...chainedUrls({
-    prefix: "developmentUrl",
-    firstName: "developmentUrl",
-    firstLabel: "Development URL for Testing",
-    nextLabel: "Additional Development URL (If available)",
-    placeholder: "Enter your Development URL for testing",
-    sectionHeader: "Development Website URLs",
-    firstRequired: false,
   }),
   {
     name: "acceptedPaymentsBefore",
@@ -285,162 +230,6 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     required: true,
     audience: "business",
     conditional: { dependsOn: "paymentProcessingAgreementTerminated", value: "yes" },
-  },
-  {
-    name: "products",
-    type: "multiselect",
-    label: "Which products will you utilize?",
-    placeholder: "Select your products",
-    required: true,
-    audience: "platform",
-    sectionHeader: "Product Selections",
-    options: [
-      { label: '"Checkout" product ("Pay-Ins")', value: "checkout" },
-      { label: '"Withdrawals" product ("Pay-outs") to end users', value: "userPayouts" },
-    ],
-  },
-  {
-    name: "bankSettlementMethods",
-    type: "multiselect",
-    label: "Which Bank Settlement Methods will you utilize?",
-    placeholder: "Select your bank settlement methods",
-    required: true,
-    audience: "platform",
-    sectionHeader: "Settlement Selections",
-    options: [
-      { label: "ACH", value: "ach" },
-      { label: "Wire", value: "wire" },
-      { label: "SEPA", value: "sepa" },
-      { label: "UK Faster Payments", value: "ukFasterPayments" },
-      { label: "PIX", value: "pix" },
-    ],
-  },
-  {
-    name: "payinMethods",
-    type: "multiselect",
-    label: "Which Pay In Methods will you utilize?",
-    placeholder: "Select the Payment Methods you want to enable for your customers",
-    required: true,
-    audience: "platform",
-    options: PAYIN_METHOD_OPTIONS,
-    conditional: { dependsOn: "products", value: "checkout" },
-  },
-  money({
-    name: "payinsMonthlyVolume",
-    label: "Estimated monthly Pay-Ins Volume (in USD) across all Pay-In products",
-    placeholder: "Estimated monthly Pay-Ins Volume (in USD) across all Pay-In products",
-    product: "checkout",
-  }),
-  money({
-    name: "payinsAverageTransactionSize",
-    label: "Pay-Ins Average Transaction Size (In USD)",
-    placeholder: "Enter average Pay-Ins transaction size in USD",
-    product: "checkout",
-  }),
-  money({
-    name: "payinsMaximumTransactionSize",
-    label: "Pay-Ins Maximum Transaction Size (In USD)",
-    placeholder: "Enter maximum Pay-Ins transaction size in USD",
-    product: "checkout",
-  }),
-  {
-    name: "payoutMethods",
-    type: "multiselect",
-    label: "Which pay-out Methods will you utilize?",
-    placeholder: "Select the Pay-Out Methods you want to enable for your customers",
-    required: true,
-    audience: "platform",
-    options: PAYOUT_METHOD_OPTIONS,
-    conditional: { dependsOn: "products", value: "userPayouts" },
-  },
-  money({
-    name: "payoutsMonthlyVolume",
-    label:
-      "Estimated monthly Pay-Outs Volume (in USD) across all end-user Pay-Outs products",
-    placeholder: "Enter monthly Pay-Outs volume in USD",
-    product: "userPayouts",
-  }),
-  money({
-    name: "payoutsAverageTransactionSize",
-    label: "Pay-Outs Average Transaction Size (In USD)",
-    placeholder: "Enter average Pay-Outs transaction size in USD",
-    product: "userPayouts",
-  }),
-  money({
-    name: "payoutsMaximumTransactionSize",
-    label: "Pay-Outs Maximum Transaction Size (In USD)",
-    placeholder: "Enter maximum Pay-Outs transaction size in USD",
-    product: "userPayouts",
-  }),
-  {
-    name: "businessCountryOfIncorporation",
-    type: "select",
-    label: "Where is your business incorporated?",
-    placeholder: "Select where your business is incorporated",
-    required: true,
-    audience: "platform",
-    sectionHeader: "User Location Information",
-    options: REGION_OPTIONS,
-  },
-  {
-    name: "endUserGeoDistribution",
-    type: "geo-distribution",
-    label: "Describe the geographical distribution of your customers",
-    placeholder: "What percentage of your users are in each jurisdiction?",
-    required: true,
-    audience: "platform",
-  },
-  {
-    name: "activeCustomers",
-    type: "select",
-    label: "How many active customers do you currently serve?",
-    placeholder: "Select the number of active customers",
-    required: true,
-    audience: "platform",
-    options: [
-      { label: "<10,000", value: "<10,000" },
-      { label: "10,000 - 100,000", value: "10,000 - 100,000" },
-      { label: ">100,000", value: ">100,000" },
-    ],
-  },
-  {
-    name: "customerSupportMethods",
-    type: "multiselect",
-    label: "What type of customer support is available for your customers?",
-    placeholder: "Select your customer support methods",
-    required: true,
-    audience: "platform",
-    sectionHeader: "User Support Information",
-    options: [
-      { label: "Live Support", value: "live" },
-      { label: "Chatbot", value: "chatbot" },
-      { label: "Email", value: "email" },
-      { label: "Other", value: "other" },
-    ],
-  },
-  {
-    name: "privacyPolicyUrl",
-    type: "url",
-    label: "Please add a link to your Privacy Policy",
-    placeholder: "Link to your Privacy Policy",
-    required: true,
-    audience: "platform",
-  },
-  {
-    name: "termsOfServiceUrl",
-    type: "url",
-    label: "Please add a link to your Terms of Service",
-    placeholder: "Link to your Terms of Service",
-    required: true,
-    audience: "platform",
-  },
-  {
-    name: "returnPolicyUrl",
-    type: "url",
-    label: "Please add a link to your Return Policy",
-    placeholder: "Link to your Return Policy",
-    required: false,
-    audience: "platform",
   },
   {
     name: "bankStatements",
