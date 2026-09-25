@@ -19,9 +19,11 @@ type StepId = "account" | "business" | "owners" | "details" | "submit";
 
 type Step = { id: StepId; title: string; complete: boolean; hidden: boolean };
 
-// Approval can also come straight from the provider (e.g. an admin unblocking
-// the account), with or without a submitted application.
+// An unblocked account is not approval on its own. Onboarding details have to
+// be submitted first. After that, approval can come from the provider
+// unblocking the account, or from the demo shortcut once the application is submitted.
 function isApproved(progress: SubmerchantProgress): boolean {
+  if (!progress.onboardingFormSubmitted) return false;
   return progress.approved || (progress.applicationSubmitted && ASSUME_APPROVED_ON_SUBMIT);
 }
 
@@ -55,7 +57,7 @@ function buildSteps(progress: SubmerchantProgress): Step[] {
     {
       id: "submit",
       title: "Submit application",
-      complete: progress.applicationSubmitted || progress.approved,
+      complete: progress.applicationSubmitted || isApproved(progress),
       hidden: false,
     },
   ];
@@ -68,7 +70,7 @@ function firstIncompleteStep(progress: SubmerchantProgress): StepId {
 
 // A brand-new application opens on the welcome step; returning visits resume where they left off.
 function initialStep(progress: SubmerchantProgress): StepId {
-  if (progress.applicationSubmitted || progress.approved) return "submit";
+  if (progress.applicationSubmitted || isApproved(progress)) return "submit";
   if (progress.verificationStatus === "pending" && !progress.onboardingFormSubmitted)
     return "account";
   return firstIncompleteStep(progress);

@@ -85,6 +85,13 @@ async function listSubmerchantRecords(): Promise<ListedSubmerchant[]> {
   return (await listSubmerchants({ limit: 100 })) as unknown as ListedSubmerchant[];
 }
 
+/** An unblocked account is not approval until onboarding details are submitted. */
+function isApplicationApproved(submerchant: ListedSubmerchant): boolean {
+  return (
+    !submerchant.blocked && Boolean(submerchant.goLiveChecklist?.onboardingFormSubmitted)
+  );
+}
+
 /** Only the fields the operator table shows — the raw records include API keys. */
 export async function listApplications(): Promise<ApplicationSummary[]> {
   await requireOperator();
@@ -93,27 +100,32 @@ export async function listApplications(): Promise<ApplicationSummary[]> {
     getSettlementAddresses(),
   ]);
   return submerchants
-    .map((submerchant) => ({
-      merchantId: submerchant.merchantId,
-      email: submerchant.users?.[0]?.email,
-      createdAt: submerchant.createdAt,
-      verificationStatus: submerchant.verification?.status ?? "pending",
-      onboardingFormSubmitted: Boolean(submerchant.goLiveChecklist?.onboardingFormSubmitted),
-      applicationSubmitted: Boolean(submerchant.goLiveChecklist?.applicationSubmitted),
-      approved: !submerchant.blocked,
-      payouts: payoutStatus({
-        approved: !submerchant.blocked,
-        parent,
-        child: chainAddresses(submerchant.settlementAddresses),
-      }),
-    }))
+    .map((submerchant) => {
+      const onboardingFormSubmitted = Boolean(submerchant.goLiveChecklist?.onboardingFormSubmitted);
+      const approved = isApplicationApproved(submerchant);
+      return {
+        merchantId: submerchant.merchantId,
+        email: submerchant.users?.[0]?.email,
+        createdAt: submerchant.createdAt,
+        verificationStatus: submerchant.verification?.status ?? "pending",
+        onboardingFormSubmitted,
+        applicationSubmitted: Boolean(submerchant.goLiveChecklist?.applicationSubmitted),
+        approved,
+        payouts: payoutStatus({
+          approved,
+          parent,
+          child: chainAddresses(submerchant.settlementAddresses),
+        }),
+      };
+    })
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 }
 
 /**
  * Coinflow sends no webhook when an admin approves an account, so each visit
  * to the operator screen points newly approved businesses' settlement at The
- * Za's wallet. Only approved accounts with a missing address are touched.
+ * Za's wallet. Only accounts that are unblocked and have submitted onboarding
+ * details, and still need a wallet, are touched.
  */
 export async function sweepSettlements(): Promise<{ configured: string[]; failed: string[] }> {
   await requireOperator();
@@ -124,7 +136,7 @@ export async function sweepSettlements(): Promise<{ configured: string[]; failed
 
   const needsSetup = submerchants.filter((submerchant) => {
     const child = chainAddresses(submerchant.settlementAddresses);
-    return payoutStatus({ approved: !submerchant.blocked, parent, child }) === "missing";
+    return payoutStatus({ approved: isApplicationApproved(submerchant), parent, child }) === "missing";
   });
 
   const configured: string[] = [];
