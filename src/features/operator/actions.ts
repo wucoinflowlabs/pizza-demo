@@ -10,6 +10,7 @@ import {
   PLATFORM_FIELDS,
   sanitizeFormValues,
   validateForm,
+  withFixedFields,
   withoutEmptyValues,
   type FieldErrors,
   type FormValues,
@@ -103,11 +104,6 @@ function urlList(values: FormValues, prefix: string, first: string): string[] {
     .filter((value): value is string => typeof value === "string" && value.length > 0);
 }
 
-function hasProduct(values: FormValues, product: string): boolean {
-  const products = values.products;
-  return typeof products === "string" && products.split(",").includes(product);
-}
-
 // Fields the create endpoint accepts; everything else goes through the draft endpoint.
 function toCreateBody({
   merchantId,
@@ -121,53 +117,43 @@ function toCreateBody({
   const text = (name: string) =>
     typeof values[name] === "string" ? (values[name] as string) : undefined;
   const websiteUrls = urlList(values, "websiteUrl", "websiteUrl");
-  const developmentUrls = urlList(values, "developmentUrl", "developmentUrl");
 
   return Object.fromEntries(
     Object.entries({
       merchantId,
       email,
       dba: text("dba"),
-      industry: text("industry"),
+      industry: FIXED_FIELDS.industry,
       businessEmail: text("businessEmail"),
       businessPhoneNumber: text("businessPhoneNumber"),
       businessPhoneCountryCode: text("businessPhoneCountryCode"),
       billingEmail: text("billingEmail"),
       websiteUrls: websiteUrls.length ? websiteUrls : undefined,
-      developmentUrls: developmentUrls.length ? developmentUrls : undefined,
-      privacyPolicyUrl: text("privacyPolicyUrl"),
-      termsOfServiceUrl: text("termsOfServiceUrl"),
-      returnPolicyUrl: text("returnPolicyUrl"),
-      payinMethods: hasProduct(values, "checkout") ? text("payinMethods") : undefined,
-      payoutMethods: hasProduct(values, "userPayouts") ? text("payoutMethods") : undefined,
+      developmentUrls: websiteUrls.length ? [websiteUrls[0]] : undefined,
+      privacyPolicyUrl: websiteUrls[0],
+      termsOfServiceUrl: websiteUrls[0],
+      returnPolicyUrl: websiteUrls[0],
+      payinMethods: FIXED_FIELDS.payinMethods,
+      payoutMethods: FIXED_FIELDS.payoutMethods,
     }).filter(([, value]) => value !== undefined),
   ) as unknown as CreateSubmerchantInput;
 }
 
 const CREATE_KEYS = new Set([
   "dba",
-  "industry",
   "businessEmail",
   "businessPhoneNumber",
   "businessPhoneCountryCode",
   "billingEmail",
-  "privacyPolicyUrl",
-  "termsOfServiceUrl",
-  "returnPolicyUrl",
-  "payinMethods",
-  "payoutMethods",
 ]);
 
 function toDraftFields(values: FormValues): FormValues {
   const rest = Object.fromEntries(
     Object.entries(values).filter(
-      ([name]) =>
-        !CREATE_KEYS.has(name) &&
-        !name.startsWith("websiteUrl") &&
-        !name.startsWith("developmentUrl"),
+      ([name]) => !CREATE_KEYS.has(name) && !name.startsWith("websiteUrl"),
     ),
   );
-  return { ...rest, ...FIXED_FIELDS };
+  return withFixedFields(rest);
 }
 
 async function createWithAvailableId({
@@ -207,7 +193,6 @@ export async function createApplication({
   const fieldErrors = validateForm({ values, fields: PLATFORM_FIELDS, requireAll: false });
   if (!EMAIL.test(email.trim())) fieldErrors.email = "Enter a valid email address";
   if (!values.dba) fieldErrors.dba = "This field is required";
-  if (!values.industry) fieldErrors.industry = "This field is required";
   if (Object.keys(fieldErrors).length)
     return { ok: false, message: "Please fix the highlighted fields.", fieldErrors };
 
@@ -261,7 +246,6 @@ export async function generateSampleApplication(): Promise<{
   return {
     email,
     values: {
-      industry: "foodBeverage",
       dba,
       businessPhoneCountryCode: "+1",
       businessPhoneNumber: `(${faker.helpers.arrayElement(AREA_CODES)}) 555-01${faker.number.int({ min: 10, max: 99 })}`,
@@ -269,28 +253,6 @@ export async function generateSampleApplication(): Promise<{
       billingEmail: `hello@${domain}`,
       whatDoesYourBusinessDo: `${dba} is a neighborhood pizzeria in ${faker.location.city()} serving wood-fired pizza, salads and drinks for dine-in, pickup and delivery. Customers pay online through The Za's ordering page and in store.`,
       websiteUrl: `https://${domain}`,
-      products: "checkout",
-      bankSettlementMethods: "ach",
-      payinMethods: "card,applePay,googlePay",
-      payinsMonthlyVolume: {
-        currency: "usd",
-        amount: faker.number.int({ min: 20, max: 120 }) * 1000,
-      },
-      payinsAverageTransactionSize: {
-        currency: "usd",
-        amount: faker.number.int({ min: 25, max: 60 }),
-      },
-      payinsMaximumTransactionSize: {
-        currency: "usd",
-        amount: faker.number.int({ min: 3, max: 8 }) * 100,
-      },
-      businessCountryOfIncorporation: "US",
-      endUserGeoDistribution: [{ region: "US", percentage: 100 }],
-      activeCustomers: "<10,000",
-      customerSupportMethods: "live,email",
-      privacyPolicyUrl: `https://${domain}/privacy`,
-      termsOfServiceUrl: `https://${domain}/terms`,
-      returnPolicyUrl: `https://${domain}/refunds`,
     },
   };
 }
