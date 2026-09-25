@@ -43,7 +43,7 @@ async function settleChain({
 }
 
 /**
- * Points a sub-merchant's settlement at The Za's own settlement wallet(s),
+ * Points a sub-merchant's settlement at Adora's own settlement wallet(s),
  * chain by chain. Idempotent: chains that already match are skipped. Pass
  * addresses you've already fetched to avoid re-reading them.
  */
@@ -78,7 +78,7 @@ export async function alignSettlementWithParent({
 
 export type PayoutStatus = "set" | "missing" | "conflict" | "waiting" | "unavailable";
 
-/** Read-only view of where a sub-merchant stands relative to The Za's wallets. */
+/** Read-only view of where a sub-merchant stands relative to Adora's wallets. */
 export function payoutStatus({
   approved,
   parent,

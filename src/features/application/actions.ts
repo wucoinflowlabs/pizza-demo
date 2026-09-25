@@ -91,7 +91,7 @@ function fieldErrorsFrom(details: unknown): FieldErrors {
 
 /**
  * The submit endpoint validates only the request body, so the stored draft
- * (including The Za's prefill) is merged in and fields the business cleared
+ * (including Adora's prefill) is merged in and fields the business cleared
  * are dropped.
  */
 export async function submitDetails(
@@ -160,7 +160,7 @@ export async function submitApplication(): Promise<
   }
 }
 
-/** Points this business's settlement at The Za's wallet(s); see alignSettlementWithParent. */
+/** Points this business's settlement at Adora's wallet(s); see alignSettlementWithParent. */
 export async function setupSettlement(): Promise<{ state: SettlementSetupState }> {
   const accountId = await getCurrentAccountId();
   if (!accountId) return { state: "error" };

@@ -243,7 +243,7 @@ async function createWithAvailableId({
 }
 
 /**
- * Creates the sub-merchant, then prefills every other answer The Za already
+ * Creates the sub-merchant, then prefills every other answer Adora already
  * knows by saving the draft onboarding form on the sub-merchant's behalf.
  */
 export async function createApplication({
@@ -296,7 +296,7 @@ export async function createApplication({
 const PIZZA_SUFFIXES = ["Pizzeria", "Pizza Co.", "Brick Oven", "Slice Shop", "Pizza Kitchen"];
 const AREA_CODES = ["312", "415", "646", "737", "206", "617"];
 
-/** Realistic demo data for a pizzeria joining The Za. */
+/** Realistic demo data for a pizzeria joining Adora Payments. */
 export async function generateSampleApplication(): Promise<{
   email: string;
   values: FormValues;
@@ -317,7 +317,7 @@ export async function generateSampleApplication(): Promise<{
       businessPhoneNumber: `(${faker.helpers.arrayElement(AREA_CODES)}) 555-01${faker.number.int({ min: 10, max: 99 })}`,
       businessEmail: `hello@${domain}`,
       billingEmail: `hello@${domain}`,
-      whatDoesYourBusinessDo: `${dba} is a neighborhood pizzeria in ${faker.location.city()} serving wood-fired pizza, salads and drinks for dine-in, pickup and delivery. Customers pay online through The Za's ordering page and in store.`,
+      whatDoesYourBusinessDo: `${dba} is a neighborhood pizzeria in ${faker.location.city()} serving wood-fired pizza, salads and drinks for dine-in, pickup and delivery. Customers pay online through Adora online ordering and in store.`,
       websiteUrl: `https://${domain}`,
     },
   };

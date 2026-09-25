@@ -26,7 +26,7 @@ function randomSuffix(): string {
 }
 
 /**
- * IDs to try in order: "theza-tonys-brick-oven", then "-2" … "-5", then a
+ * IDs to try in order: "adora-tonys-brick-oven", then "-2" … "-5", then a
  * random suffix as a last resort.
  */
 export function accountIdCandidates(businessName: string): string[] {

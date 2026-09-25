@@ -182,7 +182,7 @@ export function sanitizeFormValues(input: unknown): FormValues {
   return result;
 }
 
-/** Adds the answers The Za hardcodes, with the testing URL and policy links set to the website URL. */
+/** Adds the answers Adora hardcodes, with the testing URL and policy links set to the website URL. */
 export function withFixedFields(values: FormValues): FormValues {
   const website = values.websiteUrl;
   const websiteCopies =

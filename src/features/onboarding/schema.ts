@@ -26,7 +26,7 @@ export function isValidUrl(raw: string): boolean {
   }
 }
 
-const URL_MESSAGE = "Enter a valid web address, like thezapizza.com";
+const URL_MESSAGE = "Enter a valid web address, like yourpizzeria.com";
 
 const requiredUrl = (message: string) =>
   z.string().trim().min(1, message).refine(isValidUrl, URL_MESSAGE);

@@ -20,7 +20,7 @@ export default async function OperatorPage() {
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-2xl font-semibold tracking-tight">Businesses</h1>
           <p className="text-sm text-muted-foreground">
-            Every business onboarding to accept payments with The Za.
+            Every business onboarding to accept payments with Adora.
           </p>
         </div>
         <div className="flex gap-2">

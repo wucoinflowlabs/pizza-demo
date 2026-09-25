@@ -19,7 +19,7 @@ export type ConditionalRule = {
   value: string | boolean;
 };
 
-/** Who is expected to answer: The Za (prefilled for the business) or the business itself. */
+/** Who is expected to answer: Adora (prefilled for the business) or the business itself. */
 export type FieldAudience = "platform" | "business";
 
 export type FieldDefinition = {

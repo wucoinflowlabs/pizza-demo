@@ -1,6 +1,6 @@
-# The Za — merchant onboarding (demo)
+# Adora × Coinflow — merchant onboarding (demo)
 
-White-label onboarding for businesses joining The Za's payments platform. Each application creates a sub-merchant under The Za's parent account with our payments provider. The provider is never visible to the user: every call runs on the server.
+A white-glove demo, built for Coinflow's RFP response, of how Adora POS would onboard the restaurants in its portfolio onto Adora Payments, powered by Coinflow. Each application creates a sub-merchant under Adora's parent account with Coinflow. Every Coinflow API call runs on the server.
 
 ## Setup
 
@@ -12,7 +12,7 @@ npm run dev                  # http://localhost:3000
 
 | Variable | Notes |
 | --- | --- |
-| `PAYMENTS_API_KEY` | Admin-scoped **sandbox** API key for The Za's parent merchant. Server-only. |
+| `PAYMENTS_API_KEY` | Admin-scoped **sandbox** API key for Adora's parent merchant. Server-only. |
 | `PAYMENTS_API_BASE_URL` | Optional. Defaults to the sandbox API. |
 
 Demo tips:

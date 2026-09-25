@@ -23,7 +23,7 @@ export function OperatorSignIn() {
       <Card>
         <CardHeader>
           <LockIcon className="size-5 text-primary" />
-          <CardTitle>The Za team sign in</CardTitle>
+          <CardTitle>Adora team sign in</CardTitle>
           <CardDescription>Internal tools for onboarding new businesses.</CardDescription>
         </CardHeader>
         <CardContent>

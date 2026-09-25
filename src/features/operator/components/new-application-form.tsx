@@ -169,7 +169,7 @@ export function NewApplicationForm() {
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-2xl font-semibold tracking-tight">Onboard a business</h1>
           <p className="text-sm text-muted-foreground">
-            Fill in what The Za already knows. The business only handles verification and the
+            Fill in what Adora already knows. The business only handles verification and the
             questions only they can answer.
           </p>
         </div>

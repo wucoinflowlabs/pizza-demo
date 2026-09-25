@@ -23,7 +23,7 @@ export const REGION_OPTIONS: readonly SelectOption[] = [
   "Africa",
 ].map((region) => ({ label: region, value: region }));
 
-/** Always sent and never asked: the same for every pizzeria on The Za. */
+/** Always sent and never asked: the same for every pizzeria on Adora. */
 export const FIXED_FIELDS = {
   settlementMethods: "bankAccountSettlement",
   industry: "foodBeverage",

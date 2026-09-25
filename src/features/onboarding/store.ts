@@ -91,7 +91,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       dismissNotice: () => set({ notice: undefined }),
     }),
     {
-      name: "za-onboarding",
+      name: "adora-onboarding",
       storage: createJSONStorage(() => sessionStorage),
     },
   ),

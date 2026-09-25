@@ -3,7 +3,7 @@
 Every Coinflow API call the app makes to onboard a merchant, in the order it happens. All calls go through `paymentsRequest` in `src/lib/payments/client.ts`.
 
 - **Base URL:** `PAYMENTS_API_BASE_URL` (default `https://api-sandbox.coinflow.cash/api`)
-- **Auth:** `Authorization: <PAYMENTS_API_KEY>`, The Za's admin-scoped parent merchant key
+- **Auth:** `Authorization: <PAYMENTS_API_KEY>`, Adora's admin-scoped parent merchant key
 - **Acting as a sub-merchant:** calls marked *as sub-merchant* also send `x-coinflow-submerchant-id: <merchantId>`, which lets the parent key act on that sub-merchant's behalf
 
 ## Summary
@@ -28,7 +28,7 @@ Code: `src/features/operator/actions.ts`
 
 1. **`GET /submerchant?page=1&limit=100`** (`listApplications`) fills the operator's applications table.
 2. **`POST /submerchant`** (`createApplication`) creates the sub-merchant with `merchantId`, `email`, and the fields this endpoint accepts: `dba`, `industry`, business contact details, website/dev URLs, policy URLs, and `payinMethods`/`payoutMethods`. If the response is a 409 "merchant ID taken", the app retries once with a freshly generated ID.
-3. **`POST /merchant/onboarding/draft`** (*as sub-merchant*) prefills every other answer The Za already knows. If this call fails, the account is still created and the operator sees a warning.
+3. **`POST /merchant/onboarding/draft`** (*as sub-merchant*) prefills every other answer Adora already knows. If this call fails, the account is still created and the operator sees a warning.
 4. **`GET /submerchant/{merchantId}`** (`getInviteUrl`) runs only when an operator re-copies an invite link for an existing application.
 
 ### 2. Merchant completes the application (`/apply`)
