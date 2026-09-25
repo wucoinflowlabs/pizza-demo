@@ -1,8 +1,12 @@
-import { ArrowRightIcon, CheckCircle2Icon, CircleAlertIcon, InfoIcon } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+"use client";
+
+import { useState, useTransition } from "react";
+import { AlertCircleIcon, ArrowRightIcon, CheckCircle2Icon, CircleAlertIcon, Loader2Icon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { SubmerchantProgress } from "@/lib/payments/verification";
+import { submitApplication } from "../actions";
 import { StepHeader } from "./step-header";
 
 type Task = { id: string; title: string; description: string; onFix: () => void };
@@ -12,12 +16,16 @@ export function SubmitStep({
   onGoToVerification,
   onGoToDetails,
   onBack,
+  onSubmitted,
 }: {
   progress: SubmerchantProgress;
   onGoToVerification: () => void;
   onGoToDetails: () => void;
   onBack: () => void;
+  onSubmitted: (progress: SubmerchantProgress) => void;
 }) {
+  const [error, setError] = useState<string>();
+  const [submitting, startSubmit] = useTransition();
   // Same readiness rules the provider enforces before an application can be submitted.
   const tasks: Task[] = [];
   if (progress.verificationStatus !== "approved")
@@ -83,20 +91,31 @@ export function SubmitStep({
         </Card>
       )}
 
-      <Alert>
-        <InfoIcon />
-        <AlertTitle>This demo stops here</AlertTitle>
-        <AlertDescription>
-          Submitting sends the application to compliance review, so it&apos;s turned off in this demo.
-        </AlertDescription>
-      </Alert>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircleIcon />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex items-center gap-3">
         <Button variant="outline" onClick={onBack}>
           Back
         </Button>
-        <Button className="ml-auto" disabled>
-          Submit application
+        <Button
+          className="ml-auto"
+          disabled={!ready || submitting}
+          onClick={() =>
+            startSubmit(async () => {
+              setError(undefined);
+              const result = await submitApplication();
+              if (result.ok) onSubmitted(result.progress);
+              else setError(result.message);
+            })
+          }
+        >
+          {submitting && <Loader2Icon data-icon="inline-start" className="animate-spin" />}
+          {submitting ? "Submitting…" : "Submit application"}
         </Button>
       </div>
     </div>

@@ -46,3 +46,17 @@ export function submitOnboardingForm({
     asSubmerchant: submerchantId,
   });
 }
+
+/**
+ * "Submit application": sends the application to the provider's compliance
+ * review. Requires approved KYB and a submitted form; afterwards the form is
+ * locked (409 on further edits).
+ */
+export function submitApplicationForReview(submerchantId: string) {
+  return paymentsRequest<void>({
+    method: "POST",
+    path: "/merchant/onboarding/review",
+    body: {},
+    asSubmerchant: submerchantId,
+  });
+}

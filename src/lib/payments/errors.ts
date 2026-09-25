@@ -7,6 +7,8 @@ export type PaymentsErrorCode =
   | "NOT_FOUND"
   | "ALREADY_SUBMITTED"
   | "RATE_LIMITED"
+  | "PENDING_APPROVAL"
+  | "SETTLEMENT_ALREADY_SET"
   | "UNKNOWN";
 
 const USER_MESSAGES: Record<PaymentsErrorCode, string> = {
@@ -17,6 +19,8 @@ const USER_MESSAGES: Record<PaymentsErrorCode, string> = {
   NOT_FOUND: "We couldn't find your application. Let's start again.",
   ALREADY_SUBMITTED: "Your application has already been submitted.",
   RATE_LIMITED: "Too many attempts. Please wait a minute and try again.",
+  PENDING_APPROVAL: "This account hasn't been activated yet.",
+  SETTLEMENT_ALREADY_SET: "Payouts are already configured for this account.",
   UNKNOWN: "Something went wrong. Please try again.",
 };
 
@@ -51,6 +55,8 @@ function codeForResponse({
   detail: string;
 }): PaymentsErrorCode {
   if (/email .* is already used/i.test(detail)) return "EMAIL_TAKEN";
+  if (status === 403 && /awaiting verification/i.test(detail)) return "PENDING_APPROVAL";
+  if (/unable to reset the settlement address/i.test(detail)) return "SETTLEMENT_ALREADY_SET";
   // 409 is shared by "merchant ID taken" (create) and "already submitted" (update).
   if (/merchant id/i.test(detail)) return "ACCOUNT_ID_TAKEN";
   if (status === 409) return "ALREADY_SUBMITTED";

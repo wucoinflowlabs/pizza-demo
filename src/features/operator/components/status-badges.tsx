@@ -12,6 +12,18 @@ export function VerificationBadge({ status }: { status: string }) {
   return <Badge variant={tone}>{label}</Badge>;
 }
 
+export function ApplicationBadge({
+  submitted,
+  approved,
+}: {
+  submitted: boolean;
+  approved: boolean;
+}) {
+  if (approved) return <Badge>Approved</Badge>;
+  if (submitted) return <Badge variant="secondary">Under review</Badge>;
+  return <Badge variant="outline">Not submitted</Badge>;
+}
+
 export function FormBadge({ submitted }: { submitted: boolean }) {
   return (
     <Badge variant={submitted ? "default" : "outline"}>

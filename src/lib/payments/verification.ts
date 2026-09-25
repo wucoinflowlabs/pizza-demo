@@ -20,6 +20,7 @@ type MerchantV2Response = {
   merchant: {
     merchantId: string;
     users?: { email?: string }[];
+    blocked?: { level?: string; reason?: string };
     verification?: {
       status?: VerificationStatus;
       reference?: string;
@@ -52,6 +53,8 @@ export type SubmerchantProgress = {
   ownerInquiries: OwnerInquiry[];
   onboardingFormSubmitted: boolean;
   applicationSubmitted: boolean;
+  /** New accounts start blocked; the provider's compliance team unblocks them on approval. */
+  approved: boolean;
 };
 
 /**
@@ -91,5 +94,6 @@ export async function getSubmerchantProgress(
     applicationSubmitted: Boolean(
       merchant.goLiveChecklist?.applicationSubmitted,
     ),
+    approved: !merchant.blocked,
   };
 }

@@ -7,4 +7,6 @@ export const brand = {
   logoPath: "/brand/logo.svg",
   supportEmail: "support@theza.example",
   legalName: "The Za, Inc.",
+  /** Prepended to every sub-merchant ID, e.g. "theza-tonys-brick-oven". */
+  accountIdPrefix: "theza",
 } as const;

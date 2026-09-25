@@ -55,10 +55,13 @@ function SaveIndicator({ state }: { state: SaveState }) {
 export function DetailsStep({
   initialValues,
   alreadySubmitted,
+  locked,
   onSubmitted,
 }: {
   initialValues: FormValues;
   alreadySubmitted: boolean;
+  /** Once the application is under review the provider rejects any further edits. */
+  locked: boolean;
   onSubmitted: (progress: SubmerchantProgress) => void;
 }) {
   const [values, setValues] = useState(initialValues);
@@ -131,7 +134,16 @@ export function DetailsStep({
         </div>
       </div>
 
-      {alreadySubmitted && !dirty && (
+      {locked && (
+        <Alert>
+          <CheckIcon />
+          <AlertDescription>
+            Your application is under review, so these answers can no longer be changed.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {alreadySubmitted && !locked && !dirty && (
         <Alert>
           <CheckIcon />
           <AlertDescription>
@@ -145,6 +157,7 @@ export function DetailsStep({
         values={values}
         errors={errors}
         onChange={onChange}
+        disabled={locked}
         prefilledBadge={`Prefilled by ${brand.name}`}
         isPrefilled={isPrefilled}
         uploadFile={uploadFile}
@@ -156,10 +169,12 @@ export function DetailsStep({
           <AlertDescription>{message}</AlertDescription>
         </Alert>
       )}
-      <Button size="lg" onClick={submit} disabled={submitting}>
-        {submitting && <Loader2Icon data-icon="inline-start" className="animate-spin" />}
-        {submitting ? "Submitting…" : "Submit"}
-      </Button>
+      {!locked && (
+        <Button size="lg" onClick={submit} disabled={submitting}>
+          {submitting && <Loader2Icon data-icon="inline-start" className="animate-spin" />}
+          {submitting ? "Submitting…" : "Submit"}
+        </Button>
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { redirect } from "next/navigation";
 import { fakerEN_US as faker } from "@faker-js/faker";
-import { generateAccountId } from "@/lib/account-id";
+import { accountIdCandidates, slugify } from "@/lib/account-id";
 import { createInviteUrl } from "@/lib/invites";
 import {
   FIXED_FIELDS,
@@ -55,6 +55,8 @@ export type ApplicationSummary = {
   createdAt?: string;
   verificationStatus: string;
   onboardingFormSubmitted: boolean;
+  applicationSubmitted: boolean;
+  approved: boolean;
 };
 
 type ListedSubmerchant = {
@@ -62,7 +64,8 @@ type ListedSubmerchant = {
   createdAt?: string;
   users?: { email?: string }[];
   verification?: { status?: string };
-  goLiveChecklist?: { onboardingFormSubmitted?: boolean };
+  goLiveChecklist?: { onboardingFormSubmitted?: boolean; applicationSubmitted?: boolean };
+  blocked?: unknown;
 };
 
 /** Only the fields the operator table shows — the raw records include API keys. */
@@ -76,6 +79,8 @@ export async function listApplications(): Promise<ApplicationSummary[]> {
       createdAt: submerchant.createdAt,
       verificationStatus: submerchant.verification?.status ?? "pending",
       onboardingFormSubmitted: Boolean(submerchant.goLiveChecklist?.onboardingFormSubmitted),
+      applicationSubmitted: Boolean(submerchant.goLiveChecklist?.applicationSubmitted),
+      approved: !submerchant.blocked,
     }))
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 }
@@ -165,24 +170,24 @@ function toDraftFields(values: FormValues): FormValues {
   return { ...rest, ...FIXED_FIELDS };
 }
 
-async function createWithFreshId({
+async function createWithAvailableId({
   email,
   values,
 }: {
   email: string;
   values: FormValues;
 }): Promise<string> {
-  const attempt = async () => {
-    const merchantId = generateAccountId(String(values.dba));
-    await createSubmerchant(toCreateBody({ merchantId, email, values }));
-    return merchantId;
-  };
-  try {
-    return await attempt();
-  } catch (err) {
-    if (err instanceof PaymentsError && err.code === "ACCOUNT_ID_TAKEN") return attempt();
-    throw err;
+  const candidates = accountIdCandidates(String(values.dba));
+  for (const [index, merchantId] of candidates.entries()) {
+    try {
+      await createSubmerchant(toCreateBody({ merchantId, email, values }));
+      return merchantId;
+    } catch (err) {
+      const taken = err instanceof PaymentsError && err.code === "ACCOUNT_ID_TAKEN";
+      if (!taken || index === candidates.length - 1) throw err;
+    }
   }
+  throw new PaymentsError({ code: "ACCOUNT_ID_TAKEN" });
 }
 
 /**
@@ -208,7 +213,7 @@ export async function createApplication({
 
   let merchantId: string;
   try {
-    merchantId = await createWithFreshId({ email: email.trim(), values });
+    merchantId = await createWithAvailableId({ email: email.trim(), values });
   } catch (err) {
     const message = err instanceof PaymentsError ? err.userMessage : "Something went wrong.";
     return {
@@ -249,7 +254,7 @@ export async function generateSampleApplication(): Promise<{
   const owner = faker.person.lastName();
   const suffix = faker.helpers.arrayElement(PIZZA_SUFFIXES);
   const dba = `${owner}'s ${suffix}`;
-  const slug = generateAccountId(dba).replace(/-[a-z0-9]+$/, "");
+  const slug = slugify(dba);
   const domain = `${slug}.example`;
   const email = `demo+${faker.string.alphanumeric({ length: 6, casing: "lower" })}@example.com`;
 

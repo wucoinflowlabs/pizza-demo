@@ -14,12 +14,17 @@ import { PaymentsError } from "@/lib/payments/errors";
 import {
   getOnboardingForm,
   saveOnboardingDraft,
+  submitApplicationForReview,
   submitOnboardingForm,
 } from "@/lib/payments/onboarding";
 import {
   getSubmerchantProgress,
   type SubmerchantProgress,
 } from "@/lib/payments/verification";
+import {
+  getSettlementAddresses,
+  setSubmerchantSettlementAddress,
+} from "@/lib/payments/settlement";
 import { getCurrentAccountId } from "@/lib/session";
 
 type Failure = { ok: false; message: string; fieldErrors?: FieldErrors };
@@ -119,5 +124,100 @@ export async function submitDetails(
       };
     }
     return failure(err);
+  }
+}
+
+/**
+ * Sends the application to the provider's compliance review. Approval itself
+ * only happens on their side; the journey picks it up by re-reading progress.
+ */
+export async function submitApplication(): Promise<
+  { ok: true; progress: SubmerchantProgress } | Failure
+> {
+  const accountId = await getCurrentAccountId();
+  if (!accountId) return NO_SESSION;
+
+  try {
+    const before = await getSubmerchantProgress(accountId);
+    if (before.verificationStatus !== "approved" || !before.onboardingFormSubmitted)
+      return { ok: false, message: "Finish the outstanding tasks before submitting." };
+
+    if (!before.applicationSubmitted) await submitApplicationForReview(accountId);
+    return { ok: true, progress: await getSubmerchantProgress(accountId) };
+  } catch (err) {
+    if (err instanceof PaymentsError && err.code === "ALREADY_SUBMITTED")
+      return { ok: true, progress: await getSubmerchantProgress(accountId) };
+    if (err instanceof PaymentsError && err.code === "INVALID_FIELDS") {
+      console.error("[application] review rejected", JSON.stringify(err.details), err.message);
+      return {
+        ok: false,
+        message: "Your application isn't complete yet. Review your details and verification, then try again.",
+      };
+    }
+    return failure(err);
+  }
+}
+
+export type SettlementSetupState =
+  | "configured"
+  | "pending_approval"
+  | "conflict"
+  | "unavailable"
+  | "error";
+
+type ChainOutcome = Exclude<SettlementSetupState, "unavailable">;
+
+// Worst outcome wins, so one failing chain isn't hidden behind another that succeeded.
+const SEVERITY: ChainOutcome[] = ["error", "conflict", "pending_approval", "configured"];
+
+async function settleChain({
+  accountId,
+  blockchain,
+  address,
+  current,
+}: {
+  accountId: string;
+  blockchain: string;
+  address: string;
+  current?: string;
+}): Promise<ChainOutcome> {
+  if (current === address) return "configured";
+  if (current) return "conflict";
+  try {
+    await setSubmerchantSettlementAddress({ submerchantId: accountId, blockchain, address });
+    return "configured";
+  } catch (err) {
+    if (err instanceof PaymentsError && err.code === "PENDING_APPROVAL") return "pending_approval";
+    if (err instanceof PaymentsError && err.code === "SETTLEMENT_ALREADY_SET") return "conflict";
+    console.error(`[settlement] setting ${blockchain} failed`, err);
+    return "error";
+  }
+}
+
+/**
+ * Points the sub-merchant's settlement at The Za's own settlement wallet(s),
+ * chain by chain. Safe to call repeatedly: already-matching chains are skipped.
+ */
+export async function setupSettlement(): Promise<{ state: SettlementSetupState }> {
+  const accountId = await getCurrentAccountId();
+  if (!accountId) return { state: "error" };
+
+  try {
+    const [parent, child] = await Promise.all([
+      getSettlementAddresses(),
+      getSettlementAddresses(accountId),
+    ]);
+    const chains = Object.entries(parent);
+    if (!chains.length) return { state: "unavailable" };
+
+    const outcomes = await Promise.all(
+      chains.map(([blockchain, address]) =>
+        settleChain({ accountId, blockchain, address, current: child[blockchain] }),
+      ),
+    );
+    return { state: SEVERITY.find((outcome) => outcomes.includes(outcome)) ?? "error" };
+  } catch (err) {
+    console.error("[settlement] setup failed", err);
+    return { state: "error" };
   }
 }

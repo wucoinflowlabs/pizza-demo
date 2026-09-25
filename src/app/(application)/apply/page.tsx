@@ -43,5 +43,10 @@ export default async function ApplyPage({ searchParams }: PageProps<"/apply">) {
     getOnboardingForm(accountId),
   ]);
 
-  return <ApplicationJourney initialProgress={progress} initialValues={sanitizeFormValues(form)} />;
+  return (
+    <ApplicationJourney
+      initialProgress={progress}
+      initialValues={sanitizeFormValues(form)}
+    />
+  );
 }

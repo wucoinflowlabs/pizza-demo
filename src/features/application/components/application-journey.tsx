@@ -3,18 +3,27 @@
 import { useCallback, useMemo, useState } from "react";
 import { CheckIcon, CircleIcon } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
+import { ASSUME_APPROVED_ON_SUBMIT } from "@/config/onboarding";
 import type { FormValues } from "@/lib/onboarding-form";
 import type { SubmerchantProgress } from "@/lib/payments/verification";
 import { refreshProgress } from "../actions";
 import { AccountStep } from "./account-step";
+import { ApprovedScreen } from "./approved-screen";
 import { BusinessVerificationStep } from "./business-verification-step";
 import { DetailsStep } from "./details-step";
 import { OwnerVerificationStep } from "./owner-verification-step";
 import { SubmitStep } from "./submit-step";
+import { UnderReviewScreen } from "./under-review-screen";
 
 type StepId = "account" | "business" | "owners" | "details" | "submit";
 
 type Step = { id: StepId; title: string; complete: boolean; hidden: boolean };
+
+// Approval can also come straight from the provider (e.g. an admin unblocking
+// the account), with or without a submitted application.
+function isApproved(progress: SubmerchantProgress): boolean {
+  return progress.approved || (progress.applicationSubmitted && ASSUME_APPROVED_ON_SUBMIT);
+}
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_ATTEMPTS = 15;
@@ -43,7 +52,12 @@ function buildSteps(progress: SubmerchantProgress): Step[] {
       complete: progress.onboardingFormSubmitted,
       hidden: false,
     },
-    { id: "submit", title: "Submit application", complete: false, hidden: false },
+    {
+      id: "submit",
+      title: "Submit application",
+      complete: progress.applicationSubmitted || progress.approved,
+      hidden: false,
+    },
   ];
 }
 
@@ -54,6 +68,7 @@ function firstIncompleteStep(progress: SubmerchantProgress): StepId {
 
 // A brand-new application opens on the welcome step; returning visits resume where they left off.
 function initialStep(progress: SubmerchantProgress): StepId {
+  if (progress.applicationSubmitted || progress.approved) return "submit";
   if (progress.verificationStatus === "pending" && !progress.onboardingFormSubmitted)
     return "account";
   return firstIncompleteStep(progress);
@@ -142,13 +157,23 @@ export function ApplicationJourney({
       <DetailsStep
         initialValues={initialValues}
         alreadySubmitted={progress.onboardingFormSubmitted}
+        locked={progress.applicationSubmitted}
         onSubmitted={(next) => {
           setProgress(next);
           goTo("submit");
         }}
       />
     ),
-    submit: (
+    submit: isApproved(progress) ? (
+      <ApprovedScreen businessName={businessName} />
+    ) : progress.applicationSubmitted ? (
+      <UnderReviewScreen
+        referenceId={progress.merchantId}
+        onCheckStatus={async () => {
+          await refresh();
+        }}
+      />
+    ) : (
       <SubmitStep
         progress={progress}
         onGoToVerification={() =>
@@ -156,6 +181,10 @@ export function ApplicationJourney({
         }
         onGoToDetails={() => goTo("details")}
         onBack={() => goTo("details")}
+        onSubmitted={(next) => {
+          setProgress(next);
+          window.scrollTo({ top: 0 });
+        }}
       />
     ),
   };
