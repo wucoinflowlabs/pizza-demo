@@ -177,10 +177,6 @@ export function NewApplicationForm({
           <h1 className="font-heading text-2xl font-semibold tracking-tight">
             Enable payment processing{customerName && ` for ${customerName}`}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Fill in what Adora already knows. The business only handles verification and the
-            questions only they can answer.
-          </p>
         </div>
         <Button type="button" variant="outline" onClick={fillSample} disabled={sampling}>
           {sampling ? (
