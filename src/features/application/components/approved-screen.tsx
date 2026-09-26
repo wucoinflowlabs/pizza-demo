@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   BadgeCheckIcon,
   CheckCircle2Icon,
@@ -9,7 +10,8 @@ import {
   RefreshCwIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { cn } from "cn";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { brand } from "@/config/brand";
 import { setupSettlement, type SettlementSetupState } from "../actions";
@@ -32,7 +34,7 @@ const PAYOUT_COPY: Record<
   conflict: {
     icon: TriangleAlertIcon,
     title: "Payouts need a quick review",
-    body: `Your account already has a different payout destination. Contact ${brand.supportEmail} to change it.`,
+    body: "Your account already has a different payout destination.",
   },
   unavailable: {
     icon: TriangleAlertIcon,
@@ -138,6 +140,9 @@ export function ApprovedScreen({ businessName }: { businessName?: string }) {
         </CardContent>
       </Card>
       <PayoutSetupCard />
+      <Link href="/login" className={cn(buttonVariants({ size: "lg" }), "self-start")}>
+        Sign in to merchant dashboard
+      </Link>
     </div>
   );
 }

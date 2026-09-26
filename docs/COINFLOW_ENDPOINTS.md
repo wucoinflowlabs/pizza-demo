@@ -27,7 +27,7 @@ Every Coinflow API call the app makes to onboard a merchant, in the order it hap
 Code: `src/features/operator/actions.ts`
 
 1. **`GET /submerchant?page=1&limit=100`** (`listApplications`) fills the operator's applications table.
-2. **`POST /submerchant`** (`createApplication`) creates the sub-merchant with `merchantId`, `email`, and the fields this endpoint accepts: `dba`, `industry`, business contact details, website/dev URLs, policy URLs, and `payinMethods`/`payoutMethods`. If the response is a 409 "merchant ID taken", the app retries once with a freshly generated ID.
+2. **`POST /submerchant`** (`createApplication`) creates the sub-merchant with `merchantId`, `email`, and the fields this endpoint accepts: `dba`, `industry`, business contact details, website/dev URLs, policy URLs, and `payinMethods`/`payoutMethods`. If the response is a 409 "merchant ID taken", the app tries the next account id.
 3. **`POST /merchant/onboarding/draft`** (*as sub-merchant*) prefills every other answer Adora already knows. If this call fails, the account is still created and the operator sees a warning.
 4. **`GET /submerchant/{merchantId}`** (`getInviteUrl`) runs only when an operator re-copies an invite link for an existing application.
 

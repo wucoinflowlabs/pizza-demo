@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AdoraPayActivity } from "@/features/dashboard/components/adora-pay-activity";
 import { AdoraPaySignup } from "@/features/dashboard/components/adora-pay-signup";
 import { LAMONICA_EMAIL, LAMONICA_PREFILL } from "@/features/dashboard/lamonica";
-import { eventsFromSnapshot, type AdoraPaySnapshot } from "@/features/dashboard/pay-status";
+import { eventsFromSnapshot, snapshotFromProgress } from "@/features/dashboard/pay-status";
 import { getMerchantLogin } from "@/lib/merchant-logins";
 import { findSubmerchantIdByEmail } from "@/lib/payments/submerchants";
 import { getSubmerchantProgress } from "@/lib/payments/verification";
@@ -27,14 +27,10 @@ export default async function AdoraPayPage() {
   }
 
   const progress = await getSubmerchantProgress(submerchantId);
-  const snapshot: AdoraPaySnapshot = {
-    merchantId: progress.merchantId,
-    businessName: login.email === LAMONICA_EMAIL ? String(LAMONICA_PREFILL.dba) : undefined,
-    verificationStatus: progress.verificationStatus,
-    onboardingFormSubmitted: progress.onboardingFormSubmitted,
-    applicationSubmitted: progress.applicationSubmitted,
-    approved: progress.approved,
-  };
+  const snapshot = snapshotFromProgress(
+    progress,
+    login.email === LAMONICA_EMAIL ? String(LAMONICA_PREFILL.dba) : undefined,
+  );
 
   return (
     <AdoraPayActivity

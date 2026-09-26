@@ -8,14 +8,9 @@ export function BrandFooter() {
         <span>
           © {new Date().getFullYear()} {brand.legalName}
         </span>
-        <span className="flex gap-4">
-          <a href={`mailto:${brand.supportEmail}`} className="hover:text-foreground">
-            {brand.supportEmail}
-          </a>
-          <Link href="/operator" className="hover:text-foreground">
-            Team sign in
-          </Link>
-        </span>
+        <Link href="/operator" className="hover:text-foreground">
+          Team
+        </Link>
       </div>
     </footer>
   );

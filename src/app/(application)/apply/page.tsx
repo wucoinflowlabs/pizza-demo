@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { MailIcon } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { brand } from "@/config/brand";
 import { ApplicationJourney } from "@/features/application/components/application-journey";
 import { sanitizeFormValues } from "@/lib/onboarding-form";
@@ -22,13 +22,6 @@ function NoInvite({ invalid }: { invalid: boolean }) {
             : `Your ${brand.name} contact sends you a personal link to start or resume your application.`}
         </CardDescription>
       </CardHeader>
-      <CardContent className="text-sm text-muted-foreground">
-        Questions? Email{" "}
-        <a className="underline" href={`mailto:${brand.supportEmail}`}>
-          {brand.supportEmail}
-        </a>
-        .
-      </CardContent>
     </Card>
   );
 }

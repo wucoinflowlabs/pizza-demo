@@ -5,7 +5,6 @@ export type SubmerchantFields = {
   businessPhoneNumber?: string;
   businessPhoneCountryCode?: string;
   billingEmail?: string;
-  billingEmailSameAsBusinessEmail?: boolean;
   websiteUrls?: string[];
   developmentUrls?: string[];
   privacyPolicyUrl?: string;
@@ -15,8 +14,6 @@ export type SubmerchantFields = {
   payinMethods?: string;
   /** Comma-separated list of payout method values. */
   payoutMethods?: string;
-  /** Comma-separated list of jurisdiction values. */
-  endUserJurisdictions?: string;
 };
 
 export type CreateSubmerchantInput = SubmerchantFields & {

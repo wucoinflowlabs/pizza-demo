@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { CheckIcon, Loader2Icon, RefreshCwIcon, SendIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type StageState = "done" | "current" | "upcoming";
@@ -83,6 +84,9 @@ export function UnderReviewScreen({
           )}
           Check status
         </Button>
+        <Link href="/login" className={buttonVariants({ size: "lg" })}>
+          Sign in to merchant dashboard
+        </Link>
       </div>
     </div>
   );

@@ -109,12 +109,18 @@ function CreatedCard({ created, onReset }: { created: Created; onReset: () => vo
 export function NewApplicationForm({
   customerName,
   prefill = PREFILLED_VALUES,
+  accountEmail = PREFILLED_EMAIL,
+  location,
 }: {
   /** The Adora customer being onboarded, when started from their row on /operator. */
   customerName?: string;
   prefill?: FormValues;
+  /** Login email. A store from the customers page passes its own plus-address. */
+  accountEmail?: string;
+  /** The specific store, when onboarding one location of a brand. */
+  location?: { customerId: string; storeId: string };
 }) {
-  const [email, setEmail] = useState(PREFILLED_EMAIL);
+  const [email, setEmail] = useState(accountEmail);
   const [values, setValues] = useState<FormValues>(prefill);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string>();
@@ -147,7 +153,7 @@ export function NewApplicationForm({
       return;
     }
     startSubmit(async () => {
-      const result = await createApplication({ email, values });
+      const result = await createApplication({ email, values, location });
       if (result.ok) {
         setCreated(result);
         return;
@@ -163,7 +169,7 @@ export function NewApplicationForm({
         created={created}
         onReset={() => {
           setCreated(undefined);
-          setEmail(PREFILLED_EMAIL);
+          setEmail(accountEmail);
           setValues(prefill);
           setFormKey((key) => key + 1);
         }}

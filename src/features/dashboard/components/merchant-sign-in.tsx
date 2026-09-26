@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { LockIcon } from "lucide-react";
+import { useActionState, useState } from "react";
+import { EyeIcon, EyeOffIcon, LockIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,6 +17,7 @@ import { signInMerchant } from "../actions";
 
 export function MerchantSignIn() {
   const [state, formAction, pending] = useActionState(signInMerchant, undefined);
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   return (
     <form action={formAction} className="mx-auto w-full max-w-sm">
@@ -40,14 +41,29 @@ export function MerchantSignIn() {
           </Field>
           <Field data-invalid={!!state?.error}>
             <FieldLabel htmlFor="password">Password</FieldLabel>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              aria-invalid={!!state?.error}
-              required
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={passwordVisible ? "text" : "password"}
+                autoComplete="current-password"
+                defaultValue="11111"
+                aria-invalid={!!state?.error}
+                className="pr-8"
+                required
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="absolute top-1 right-1 text-muted-foreground"
+                aria-label={passwordVisible ? "Hide password" : "Show password"}
+                aria-pressed={passwordVisible}
+                onClick={() => setPasswordVisible((visible) => !visible)}
+              >
+                {passwordVisible ? <EyeOffIcon /> : <EyeIcon />}
+              </Button>
+            </div>
             <FieldError>{state?.error}</FieldError>
           </Field>
         </CardContent>

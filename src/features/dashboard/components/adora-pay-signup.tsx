@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { XIcon } from "lucide-react";
+import { ArrowRightIcon, XIcon } from "lucide-react";
 import { OnboardingFields } from "@/components/onboarding-form/onboarding-fields";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +17,7 @@ import { AdoraPayActivity } from "./adora-pay-activity";
 import { FeatureCarousel } from "./feature-carousel";
 
 export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
-  const [stage, setStage] = useState<"page" | "intro" | "form" | "live">("page");
+  const [stage, setStage] = useState<"page" | "intro" | "form">("page");
   const [values, setValues] = useState(prefill);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string>();
@@ -41,7 +41,6 @@ export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
         return;
       }
       setLive({ snapshot: result.snapshot, events: result.events });
-      setStage("live");
     });
   };
 
@@ -49,14 +48,14 @@ export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
     <div className="relative min-h-[32rem] flex-1">
       <FeatureCarousel />
       {stage === "page" && (
-        <div className="absolute top-6 right-6">
+        <div className="absolute top-1/2 right-6 z-10 -translate-y-1/2 sm:right-10">
           <Button
             type="button"
-            size="lg"
-            className="bg-white text-adora-navy hover:bg-white/90"
+            className="h-14 gap-2.5 rounded-full bg-white px-7 text-base font-semibold text-adora-navy shadow-[0_18px_40px_-16px_rgba(0,0,0,0.55)] transition duration-200 hover:scale-105 hover:bg-white hover:shadow-[0_24px_48px_-14px_rgba(0,0,0,0.6)] active:scale-[0.98] sm:h-20 sm:gap-3 sm:px-10 sm:text-xl"
             onClick={() => setStage("intro")}
           >
             Enroll Now
+            <ArrowRightIcon className="size-5 transition-transform duration-200 group-hover/button:translate-x-1 sm:size-6" />
           </Button>
         </div>
       )}

@@ -1,20 +1,25 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { findAdoraCustomer } from "@/features/operator/adora-customers";
+import { customerPrefill, findAdoraCustomer } from "@/features/operator/adora-customers";
+import { findAdoraStore, shopDemoEmail, storePrefill } from "@/features/operator/adora-stores";
 import { NewApplicationForm } from "@/features/operator/components/new-application-form";
-import { isOperator } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Enable payment processing" };
 
 export default async function NewApplicationPage({ searchParams }: PageProps<"/operator/new">) {
-  if (!(await isOperator())) redirect("/operator");
-  const customer = findAdoraCustomer((await searchParams).customer);
+  const params = await searchParams;
+  const customer = findAdoraCustomer(params.customer);
+  const store = customer ? findAdoraStore(customer.id, params.store) : undefined;
+  const locationLabel = store ? `${store.street}, ${store.city}` : undefined;
   return (
     <div className="mx-auto w-full max-w-3xl">
       <NewApplicationForm
-        key={customer?.id}
-        customerName={customer?.name}
-        prefill={customer?.prefill}
+        key={store ? `${customer?.id}:${store.id}` : customer?.id}
+        customerName={
+          customer ? (locationLabel ? `${customer.name} — ${locationLabel}` : customer.name) : undefined
+        }
+        prefill={customer ? (store ? storePrefill(customer, store) : customerPrefill(customer)) : undefined}
+        accountEmail={customer && store ? shopDemoEmail(customer.id, store.id) : undefined}
+        location={customer && store ? { customerId: customer.id, storeId: store.id } : undefined}
       />
     </div>
   );

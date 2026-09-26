@@ -22,6 +22,26 @@ export type PayStep = {
 
 const VERIFIED = new Set(["approved", "partialApproval"]);
 
+export function snapshotFromProgress(
+  progress: {
+    merchantId: string;
+    verificationStatus: string;
+    onboardingFormSubmitted: boolean;
+    applicationSubmitted: boolean;
+    approved: boolean;
+  },
+  businessName?: string,
+): AdoraPaySnapshot {
+  return {
+    merchantId: progress.merchantId,
+    businessName,
+    verificationStatus: progress.verificationStatus,
+    onboardingFormSubmitted: progress.onboardingFormSubmitted,
+    applicationSubmitted: progress.applicationSubmitted,
+    approved: progress.approved,
+  };
+}
+
 export function paySteps(snapshot: AdoraPaySnapshot): PayStep[] {
   return [
     { id: "account", label: "Account created", done: true },
