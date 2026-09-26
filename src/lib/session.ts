@@ -4,6 +4,7 @@ import { signToken, verifyToken } from "./signing";
 
 const ACCOUNT_COOKIE = "za_account";
 const OPERATOR_COOKIE = "za_operator";
+const MERCHANT_COOKIE = "za_merchant";
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 const TWELVE_HOURS_SECONDS = 60 * 60 * 12;
 
@@ -50,4 +51,23 @@ export async function startOperatorSession() {
 
 export async function endOperatorSession() {
   (await cookies()).delete(OPERATOR_COOKIE);
+}
+
+/** The merchant dashboard login. Separate from the invite-link account cookie. */
+export async function getCurrentMerchantEmail(): Promise<string | undefined> {
+  const token = (await cookies()).get(MERCHANT_COOKIE)?.value;
+  return verifyToken({ token, purpose: "merchant" });
+}
+
+export async function startMerchantSession(email: string) {
+  const token = signToken({
+    purpose: "merchant",
+    subject: email,
+    ttlSeconds: TWELVE_HOURS_SECONDS,
+  });
+  (await cookies()).set(MERCHANT_COOKIE, token, cookieOptions(TWELVE_HOURS_SECONDS));
+}
+
+export async function endMerchantSession() {
+  (await cookies()).delete(MERCHANT_COOKIE);
 }

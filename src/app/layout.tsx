@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Inter, Montserrat } from "next/font/google";
 import { BrandFooter } from "@/components/brand/brand-footer";
 import { BrandHeader } from "@/components/brand/brand-header";
+import { SiteFrame } from "@/components/brand/site-frame";
 import { brand } from "@/config/brand";
 import "./globals.css";
 
@@ -22,9 +23,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${sans.variable} ${display.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <BrandHeader />
-        <main className="flex flex-1 flex-col">{children}</main>
-        <BrandFooter />
+        <SiteFrame header={<BrandHeader />} footer={<BrandFooter />}>
+          {children}
+        </SiteFrame>
       </body>
     </html>
   );

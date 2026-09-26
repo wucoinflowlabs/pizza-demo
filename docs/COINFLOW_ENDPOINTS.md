@@ -18,7 +18,7 @@ Every Coinflow API call the app makes to onboard a merchant, in the order it hap
 | 6 | `GET` | `/merchant/onboarding` | ✓ | Read the stored onboarding form |
 | 7 | `POST` | `/merchant/files/upload-url` | ✓ | Get a presigned URL for a document upload |
 | 8 | `POST` | `/merchant/onboarding/submit` | ✓ | Submit the complete onboarding form |
-| 9 | `PATCH` | `/submerchant/{merchantId}` | | Update sub-merchant fields (legacy `/onboarding` wizard only) |
+| 9 | `POST` | `/merchant/onboarding/review` | ✓ | Submit the application for compliance review |
 
 ## Main flow: operator invite, then `/apply`
 
@@ -42,10 +42,4 @@ Code: `src/app/(application)/apply/page.tsx`, `src/features/application/actions.
 9. **`GET /merchant/onboarding`** (*as sub-merchant*) runs again at submit time. Submit validates only the request body, so the stored draft (including the operator's prefill) is merged with the merchant's answers first.
 10. **`POST /merchant/onboarding/submit`** (*as sub-merchant*) submits the full merged form. A 400/422 response includes field errors, which the app maps back onto the form.
 11. **`GET /merchant/v2`** (*as sub-merchant*) runs right after submit to refresh progress (`goLiveChecklist.onboardingFormSubmitted`).
-
-## Legacy flow: self-serve `/onboarding` wizard
-
-Code: `src/features/onboarding/actions.ts`
-
-- **`POST /submerchant`** runs on step 1 (Account) to create the sub-merchant, with the same retry-once behaviour for a taken merchant ID.
-- **`PATCH /submerchant/{merchantId}`** runs on each later step (Contact, Online presence, Payments) and again on final submit to re-send every answer. This flow never calls `/merchant/onboarding/submit`, so the application stays a draft on Coinflow's side.
+12. **`POST /merchant/onboarding/review`** (*as sub-merchant*) runs when the merchant clicks **Submit application**, after verification is approved and the form is submitted.

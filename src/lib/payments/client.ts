@@ -4,7 +4,7 @@ import { PaymentsError, paymentsErrorFromResponse } from "./errors";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
-type HttpMethod = "GET" | "POST" | "PATCH";
+type HttpMethod = "GET" | "POST";
 
 export async function paymentsRequest<T>({
   method,

@@ -5,7 +5,7 @@ A white-glove demo, built for Coinflow's RFP response, of how Adora POS would on
 ## Setup
 
 ```bash
-cp .env.example .env.local   # then set PAYMENTS_API_KEY
+cp .env.example .env.local   # then set PAYMENTS_API_KEY, APP_SECRET, OPERATOR_PASSCODE
 npm install
 npm run dev                  # http://localhost:3000
 ```
@@ -14,18 +14,22 @@ npm run dev                  # http://localhost:3000
 | --- | --- |
 | `PAYMENTS_API_KEY` | Admin-scoped **sandbox** API key for Adora's parent merchant. Server-only. |
 | `PAYMENTS_API_BASE_URL` | Optional. Defaults to the sandbox API. |
+| `APP_SECRET` | Signs invite links and session cookies. |
+| `OPERATOR_PASSCODE` | Passcode for `/operator`. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL. |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Safe for the browser. |
+| `SUPABASE_SECRET_KEY` | Server-only. Never prefix with `NEXT_PUBLIC_`. |
 
 Demo tips:
 - Every application needs a **new login email**. Plus-aliases (for example `demo+1@example.com`) work.
-- "Start a new application" on the confirmation page clears the current application.
+- Merchants open their invite link; the Adora team manages applications from `/operator`.
 
 ## How onboarding works
 
-1. **Your business.** Creates the sub-merchant (`POST /submerchant`) with a generated ID such as `tonys-brick-oven-a8k2m1`, then stores the ID in the httpOnly `za_account` cookie.
-2. **Contact details**, 3. **Online presence**, 4. **Payments.** Each step saves its own fields (`PATCH /submerchant/{id}`).
-5. **Review → Submit.** Re-sends every answer, then shows the confirmation page.
+1. **Operator (`/operator`).** Creates the sub-merchant (`POST /submerchant`), prefills what Adora already knows (`POST /merchant/onboarding/draft`), and copies an invite link.
+2. **Merchant (`/apply`).** Opens the invite, completes business/owner verification, finishes the remaining onboarding details, then submits the form and application for review.
 
-The provider API has no "submit for underwriting" call, so on their side the application stays a **draft**. Verification (KYB) and underwriting happen outside this app.
+Provider API details live in `docs/COINFLOW_ENDPOINTS.md`.
 
 ## Architecture
 
@@ -33,17 +37,21 @@ The provider API has no "submit for underwriting" call, so on their side the app
 src/
   app/
     page.tsx                      landing
-    (onboarding)/onboarding/      wizard + /submitted
+    (operator)/operator/          Adora team console
+    (application)/apply/          merchant invite journey
+    invite/[token]/               invite → session cookie
     (dashboard)/                  future: sub-merchant dashboard
     (checkout)/                   future: checkout flow
   features/
-    onboarding/                   schema, options, server actions, wizard state, step UI
+    operator/                     create apps, invite links, status table
+    application/                  verification, details form, submit
     dashboard/  checkout/         future
   lib/
     payments/                     the only code that talks to the provider (server-only)
-    session.ts                    "current sub-merchant" cookie shared by every flow
+    onboarding-form/              shared form field definitions
+    session.ts                    current sub-merchant + operator cookies
   config/brand.ts                 name, copy, logo, support email
-  components/brand/  components/ui/
+  components/brand/  components/ui/  components/onboarding-form/
 ```
 
 Rules:

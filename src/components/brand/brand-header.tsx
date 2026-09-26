@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { brand } from "@/config/brand";
+import { HeaderCorner } from "./header-corner";
 import { Logo } from "./logo";
 
 export function BrandHeader() {
@@ -9,12 +10,7 @@ export function BrandHeader() {
         <Link href="/" aria-label={`${brand.name} home`}>
           <Logo />
         </Link>
-        <a
-          href={`mailto:${brand.supportEmail}`}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          Need help?
-        </a>
+        <HeaderCorner />
       </div>
     </header>
   );

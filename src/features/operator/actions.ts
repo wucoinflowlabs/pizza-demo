@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { fakerEN_US as faker } from "@faker-js/faker";
 import { accountIdCandidates, slugify } from "@/lib/account-id";
 import { createInviteUrl } from "@/lib/invites";
+import { saveMerchantLogin } from "@/lib/merchant-logins";
 import {
   FIXED_FIELDS,
   PLATFORM_FIELDS,
@@ -164,12 +165,6 @@ export type CreateApplicationResult =
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function urlList(values: FormValues, prefix: string, first: string): string[] {
-  return [first, `${prefix}2`, `${prefix}3`, `${prefix}4`, `${prefix}5`]
-    .map((name) => values[name])
-    .filter((value): value is string => typeof value === "string" && value.length > 0);
-}
-
 // Fields the create endpoint accepts; everything else goes through the draft endpoint.
 function toCreateBody({
   merchantId,
@@ -182,7 +177,11 @@ function toCreateBody({
 }): CreateSubmerchantInput {
   const text = (name: string) =>
     typeof values[name] === "string" ? (values[name] as string) : undefined;
-  const websiteUrls = urlList(values, "websiteUrl", "websiteUrl");
+  const website =
+    typeof values.websiteUrl === "string" && values.websiteUrl.length > 0
+      ? values.websiteUrl
+      : undefined;
+  const websiteUrls = website ? [website] : [];
 
   return Object.fromEntries(
     Object.entries({
@@ -278,19 +277,27 @@ export async function createApplication({
   }
 
   const inviteUrl = await createInviteUrl(merchantId);
+  const warnings: string[] = [];
+  try {
+    await saveMerchantLogin({ merchantId, email: email.trim() });
+  } catch (err) {
+    console.error("[operator] merchant login was not saved", err);
+    warnings.push("The account was created, but the merchant login couldn't be saved.");
+  }
   try {
     await saveOnboardingDraft({ submerchantId: merchantId, fields: toDraftFields(values) });
   } catch (err) {
     console.error("[operator] prefill draft failed", err);
-    return {
-      ok: true,
-      merchantId,
-      inviteUrl,
-      warning:
-        "The account was created, but some prefilled answers couldn't be saved. The business will need to fill them in.",
-    };
+    warnings.push(
+      "Some prefilled answers couldn't be saved. The business will need to fill them in.",
+    );
   }
-  return { ok: true, merchantId, inviteUrl };
+  return {
+    ok: true,
+    merchantId,
+    inviteUrl,
+    warning: warnings.length ? warnings.join(" ") : undefined,
+  };
 }
 
 const PIZZA_SUFFIXES = ["Pizzeria", "Pizza Co.", "Brick Oven", "Slice Shop", "Pizza Kitchen"];

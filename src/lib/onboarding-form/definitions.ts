@@ -42,6 +42,7 @@ export const FIXED_FIELDS = {
   payoutsMonthlyVolume: { currency: "usd", amount: 10_000 },
   payoutsAverageTransactionSize: { currency: "usd", amount: 60 },
   payoutsMaximumTransactionSize: { currency: "usd", amount: 5_000 },
+  pciComplianceStatus: "no",
 } satisfies FormValues;
 
 /** Also never asked: the testing URL and every policy link are the business's website. */
@@ -51,36 +52,6 @@ export const WEBSITE_URL_COPIES = [
   "termsOfServiceUrl",
   "returnPolicyUrl",
 ] as const;
-
-const chainedUrls = ({
-  prefix,
-  firstName,
-  firstLabel,
-  nextLabel,
-  placeholder,
-  sectionHeader,
-  firstRequired,
-}: {
-  prefix: string;
-  firstName: string;
-  firstLabel: string;
-  nextLabel: string;
-  placeholder: string;
-  sectionHeader: string;
-  firstRequired: boolean;
-}): FieldDefinition[] => {
-  const names = [firstName, `${prefix}2`, `${prefix}3`, `${prefix}4`, `${prefix}5`];
-  return names.map((name, index) => ({
-    name,
-    type: "url",
-    label: index === 0 ? firstLabel : nextLabel,
-    placeholder,
-    required: index === 0 && firstRequired,
-    audience: "platform",
-    sectionHeader: index === 0 ? sectionHeader : undefined,
-    conditional: index === 0 ? undefined : { dependsOn: names[index - 1], value: true },
-  }));
-};
 
 export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
   {
@@ -130,15 +101,15 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     required: true,
     audience: "platform",
   },
-  ...chainedUrls({
-    prefix: "websiteUrl",
-    firstName: "websiteUrl",
-    firstLabel: "Website URL",
-    nextLabel: "Additional Website URL (If available)",
+  {
+    name: "websiteUrl",
+    type: "url",
+    label: "Website URL",
     placeholder: "Enter your website URL",
+    required: true,
+    audience: "platform",
     sectionHeader: "Production Website URLs",
-    firstRequired: true,
-  }),
+  },
   {
     name: "acceptedPaymentsBefore",
     type: "select",
@@ -242,29 +213,6 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     sectionHeader: "Financial Documentation",
     accept: ".pdf,.png,.jpg,.jpeg,.docx,.csv",
     maxSizeMb: 10,
-  },
-  {
-    name: "pciComplianceStatus",
-    type: "select",
-    label: "Enable Server-to-Server Tokenization (PCI Compliant Merchants)",
-    placeholder: "Select Yes or No",
-    required: false,
-    audience: "business",
-    sectionHeader: "PCI Compliance",
-    tip: "Server-to-server tokenization lets you send raw card data directly to our API. This requires PCI DSS Level 1 or 2 compliance — you'll need to upload your current AOC for verification.",
-    options: YES_NO,
-  },
-  {
-    name: "pciComplianceAocFile",
-    type: "file",
-    label:
-      "Upload your PCI AOC (Attestation of Compliance). This document must be signed off by a PCI Qualified Security Assessor (QSA).",
-    placeholder: "Upload your PCI AOC document",
-    required: true,
-    audience: "business",
-    accept: ".pdf,.png,.jpg,.jpeg,.docx",
-    maxSizeMb: 10,
-    conditional: { dependsOn: "pciComplianceStatus", value: "yes" },
   },
 ];
 
