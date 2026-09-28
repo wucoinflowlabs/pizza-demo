@@ -1,5 +1,40 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { CheckIcon } from "lucide-react";
-import type { StoreOnboardingStatus } from "../store-status";
+import type { OnboardingCompletedAt, StoreOnboardingStatus } from "../store-status";
+
+/** Re-render when the soonest approval hold expires. */
+export function useApprovalClock(deadlines: Array<string | undefined>) {
+  const [now, setNow] = useState(() => Date.now());
+  const next = deadlines
+    .map((iso) => (iso ? Date.parse(iso) : Number.NaN))
+    .filter((time) => time > now)
+    .sort((a, b) => a - b)[0];
+
+  useEffect(() => {
+    if (next === undefined) return;
+    const remaining = next - Date.now();
+    if (remaining <= 0) return;
+    const timer = window.setTimeout(() => setNow(next + 1), remaining);
+    return () => window.clearTimeout(timer);
+  }, [next]);
+
+  return now;
+}
+
+const STEP_DAY = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  timeZone: "America/Chicago",
+});
+
+const STEP_CLOCK = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZone: "America/Chicago",
+});
 
 const PROGRESS_STEPS = [
   { id: "account", label: "Account creation" },
@@ -14,9 +49,31 @@ function progressDone(status: StoreOnboardingStatus): boolean[] {
   return [account, formSubmitted, status === "approved"];
 }
 
-export function StoreProgress({ status }: { status: StoreOnboardingStatus }) {
+function StepTime({ iso }: { iso: string }) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return (
+    <time
+      dateTime={iso}
+      className="text-center text-[10px] leading-tight whitespace-nowrap text-muted-foreground tabular-nums"
+    >
+      {STEP_DAY.format(date)}
+      <br />
+      {STEP_CLOCK.format(date)}
+    </time>
+  );
+}
+
+export function StoreProgress({
+  status,
+  completedAt,
+}: {
+  status: StoreOnboardingStatus;
+  completedAt?: OnboardingCompletedAt;
+}) {
   const done = progressDone(status);
   const current = done.findIndex((step) => !step);
+  const times = [completedAt?.account, completedAt?.form, completedAt?.approved];
 
   return (
     <ol aria-label="Onboarding progress" className="flex shrink-0 items-start">
@@ -24,12 +81,13 @@ export function StoreProgress({ status }: { status: StoreOnboardingStatus }) {
         const complete = done[index];
         const active = index === current;
         const linked = index > 0 && done[index - 1];
+        const finishedAt = complete ? times[index] : undefined;
         return (
           <li
             key={step.id}
             aria-current={active ? "step" : undefined}
             className={`flex shrink-0 flex-col items-center gap-1.5 ${
-              step.id === "form" ? "w-[5.5rem]" : "w-16"
+              step.id === "form" ? "w-[5.5rem]" : "w-20"
             }`}
           >
             <span className="relative flex h-7 w-full items-center justify-center">
@@ -68,6 +126,7 @@ export function StoreProgress({ status }: { status: StoreOnboardingStatus }) {
             >
               {step.label}
             </span>
+            {finishedAt ? <StepTime iso={finishedAt} /> : null}
           </li>
         );
       })}

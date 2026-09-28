@@ -42,9 +42,11 @@ export type ApplicationSummary = {
   merchantId: string;
   email?: string;
   createdAt?: string;
+  updatedAt?: string;
   verificationStatus: string;
   onboardingFormSubmitted: boolean;
   applicationSubmitted: boolean;
+  applicationSubmittedAt?: string;
   approved: boolean;
   payouts: PayoutStatus;
 };
@@ -52,9 +54,14 @@ export type ApplicationSummary = {
 type ListedSubmerchant = {
   merchantId: string;
   createdAt?: string;
+  updatedAt?: string;
   users?: { email?: string }[];
   verification?: { status?: string };
-  goLiveChecklist?: { onboardingFormSubmitted?: boolean; applicationSubmitted?: boolean };
+  goLiveChecklist?: {
+    onboardingFormSubmitted?: boolean;
+    applicationSubmitted?: boolean;
+    applicationSubmittedAt?: string;
+  };
   blocked?: unknown;
   settlementAddresses?: RawSettlementAddresses;
 };
@@ -80,13 +87,17 @@ export async function listApplications(): Promise<ApplicationSummary[]> {
     .map((submerchant) => {
       const onboardingFormSubmitted = Boolean(submerchant.goLiveChecklist?.onboardingFormSubmitted);
       const approved = isApplicationApproved(submerchant);
+      const applicationSubmittedAt = submerchant.goLiveChecklist?.applicationSubmittedAt;
       return {
         merchantId: submerchant.merchantId,
         email: submerchant.users?.[0]?.email,
         createdAt: submerchant.createdAt,
+        updatedAt: submerchant.updatedAt,
         verificationStatus: submerchant.verification?.status ?? "pending",
         onboardingFormSubmitted,
         applicationSubmitted: Boolean(submerchant.goLiveChecklist?.applicationSubmitted),
+        applicationSubmittedAt:
+          typeof applicationSubmittedAt === "string" ? applicationSubmittedAt : undefined,
         approved,
         payouts: payoutStatus({
           approved,

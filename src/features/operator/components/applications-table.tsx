@@ -13,9 +13,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { ApplicationSummary } from "../actions";
-import { storeOnboardingStatus } from "../store-status";
+import { onboardingCompletedAt, revealApproval, storeOnboardingStatus } from "../store-status";
 import { InviteActions } from "./invite-actions";
-import { StoreProgress } from "./store-progress";
+import { StoreProgress, useApprovalClock } from "./store-progress";
 
 export type ListedApplication = ApplicationSummary & {
   store?: {
@@ -46,6 +46,9 @@ function matchesQuery(application: ListedApplication, query: string) {
 
 export function ApplicationsTable({ applications }: { applications: ListedApplication[] }) {
   const [query, setQuery] = useState("");
+  const now = useApprovalClock(
+    applications.map((application) => onboardingCompletedAt(application).approved),
+  );
   const needle = query.trim().toLowerCase();
   const visible = needle
     ? applications.filter((application) => matchesQuery(application, needle))
@@ -92,7 +95,8 @@ export function ApplicationsTable({ applications }: { applications: ListedApplic
               </TableRow>
             ) : (
               visible.map((application) => {
-                const status = storeOnboardingStatus(application);
+                const completedAt = onboardingCompletedAt(application);
+                const status = revealApproval(storeOnboardingStatus(application, now), completedAt, now);
                 const store = application.store;
                 const place = store
                   ? `${store.street}, ${store.city}, ${store.state}`
@@ -109,7 +113,7 @@ export function ApplicationsTable({ applications }: { applications: ListedApplic
                       )}
                     </TableCell>
                     <TableCell className="whitespace-normal">
-                      <StoreProgress status={status} />
+                      <StoreProgress status={status} completedAt={completedAt} />
                     </TableCell>
                     <TableCell>
                       <InviteActions merchantId={application.merchantId} />

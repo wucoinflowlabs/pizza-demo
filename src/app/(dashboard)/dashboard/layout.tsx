@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { DashboardShell } from "@/features/dashboard/components/dashboard-nav";
 import { shopLogo } from "@/features/dashboard/shop-logo";
+import { shopTheme } from "@/features/dashboard/shop-theme";
 import { getMerchantLogin } from "@/lib/merchant-logins";
 import { endMerchantSession, getCurrentMerchantEmail } from "@/lib/session";
 
@@ -19,6 +20,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
       email={login.email}
       name={login.name}
       shopLogo={shopLogo({ name: login.name, email: login.email })}
+      theme={shopTheme({ name: login.name, email: login.email })}
     >
       {children}
     </DashboardShell>

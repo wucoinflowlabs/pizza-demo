@@ -51,7 +51,7 @@ export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
         <div className="absolute top-1/2 right-6 z-10 -translate-y-1/2 sm:right-10">
           <Button
             type="button"
-            className="h-14 gap-2.5 rounded-full bg-white px-7 text-base font-semibold text-adora-navy shadow-[0_18px_40px_-16px_rgba(0,0,0,0.55)] transition duration-200 hover:scale-105 hover:bg-white hover:shadow-[0_24px_48px_-14px_rgba(0,0,0,0.6)] active:scale-[0.98] sm:h-20 sm:gap-3 sm:px-10 sm:text-xl"
+            className="h-14 gap-2.5 rounded-full bg-white px-7 text-base font-semibold text-shop-ink shadow-[0_18px_40px_-16px_rgba(0,0,0,0.55)] transition duration-200 hover:scale-105 hover:bg-white hover:shadow-[0_24px_48px_-14px_rgba(0,0,0,0.6)] active:scale-[0.98] sm:h-20 sm:gap-3 sm:px-10 sm:text-xl"
             onClick={() => setStage("intro")}
           >
             Enroll Now
@@ -68,7 +68,7 @@ export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
             className="w-full max-w-md rounded-2xl bg-background p-6 shadow-2xl"
           >
             <div className="flex items-start justify-between gap-4">
-              <p className="text-sm font-semibold text-adora-blue">Adora Pay</p>
+              <p className="text-sm font-semibold text-shop-accent">Adora Pay</p>
               <button
                 type="button"
                 aria-label="Close sign up"
@@ -78,7 +78,7 @@ export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
                 <XIcon className="size-4" />
               </button>
             </div>
-            <h1 id="adora-pay-signup-title" className="mt-1 font-heading text-2xl font-bold text-adora-navy">
+            <h1 id="adora-pay-signup-title" className="mt-1 font-heading text-2xl font-bold text-shop-ink">
               Sign up for Adora Pay
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -102,8 +102,8 @@ export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
           >
             <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
               <div>
-                <p className="text-sm font-semibold text-adora-blue">Adora Pay</p>
-                <h2 id="adora-pay-form-title" className="font-heading text-xl font-bold text-adora-navy">
+                <p className="text-sm font-semibold text-shop-accent">Adora Pay</p>
+                <h2 id="adora-pay-form-title" className="font-heading text-xl font-bold text-shop-ink">
                   Onboarding form
                 </h2>
               </div>

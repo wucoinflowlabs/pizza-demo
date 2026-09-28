@@ -17,6 +17,14 @@ const DEMO_EMAIL = "chris@coinflowlabs.app";
 
 export const ADORA_CUSTOMERS: AdoraCustomer[] = [
   {
+    id: "lamonica",
+    name: "Lamonica's NY Pizza",
+    location: { city: "Los Angeles", state: "CA" },
+    phone: "(310) 208-8671",
+    websiteUrl: "https://lamonicasnypizza.com/",
+    logo: "/shops/lamonicas.png",
+  },
+  {
     id: "mmp",
     name: "Mountain Mike's Pizza",
     location: { city: "San Jose", state: "CA" },
@@ -36,6 +44,7 @@ export const ADORA_CUSTOMERS: AdoraCustomer[] = [
     name: "Romeo's Pizza",
     location: { city: "Columbus", state: "OH" },
     phone: "(614) 869-3200",
+    websiteUrl: "https://romeospizza.com/",
     logo: "/shops/romeos.png",
   },
   {
@@ -59,6 +68,7 @@ export const ADORA_CUSTOMERS: AdoraCustomer[] = [
     name: "Pizza My Heart",
     location: { city: "San Jose", state: "CA" },
     phone: "(408) 226-9100",
+    websiteUrl: "https://www.pizzamyheart.com/",
     logo: "/shops/pizza-my-heart.png",
   },
   {
@@ -74,6 +84,7 @@ export const ADORA_CUSTOMERS: AdoraCustomer[] = [
     name: "Toppers Pizza",
     location: { city: "Oxnard", state: "CA" },
     phone: "(805) 385-4444",
+    websiteUrl: "https://topperspizzaplace.com/",
     logo: "/shops/toppers.png",
   },
 ];

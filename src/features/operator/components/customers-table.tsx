@@ -16,35 +16,25 @@ import {
 } from "@/components/ui/table";
 import type { AdoraCustomer } from "../adora-customers";
 import type { AdoraStore } from "../adora-stores";
-import type { StoreOnboardingStatus } from "../store-status";
+import {
+  revealApproval,
+  storeOnboardingLabel,
+  type OnboardingCompletedAt,
+  type StoreOnboardingStatus,
+} from "../store-status";
 import { OnboardingChart } from "./onboarding-chart";
-import { StoreProgress } from "./store-progress";
-
-/** Brands with more locations than this open as city groups, so a 300-store chain stays collapsed. */
-const GROUP_AT = 12;
+import { StoreProgress, useApprovalClock } from "./store-progress";
 
 export type CustomerStore = AdoraStore & {
   status: StoreOnboardingStatus;
   label: string;
+  completedAt: OnboardingCompletedAt;
 };
 
 function brandSummary(stores: CustomerStore[]) {
   if (stores.length === 0) return "No locations";
-  const onboarded = stores.filter((store) => store.status !== "not-started").length;
+  const onboarded = stores.filter((store) => store.status === "approved").length;
   return `${onboarded}/${stores.length} onboarded`;
-}
-
-function groupByCity(stores: CustomerStore[]) {
-  const groups = new Map<string, CustomerStore[]>();
-  for (const store of stores) {
-    const key = `${store.city}, ${store.state}`;
-    const list = groups.get(key) ?? [];
-    list.push(store);
-    groups.set(key, list);
-  }
-  return [...groups.entries()].sort(
-    (a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]),
-  );
 }
 
 function StoreLine({ store }: { store: CustomerStore }) {
@@ -57,7 +47,7 @@ function StoreLine({ store }: { store: CustomerStore }) {
           {store.phone ? ` · ${store.phone}` : ""}
         </div>
       </div>
-      <StoreProgress status={store.status} />
+      <StoreProgress status={store.status} completedAt={store.completedAt} />
       <div className="flex justify-end">
         {store.status === "not-started" && (
           <Link
@@ -82,36 +72,34 @@ export function CustomersTable({
 }) {
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [openCities, setOpenCities] = useState<Set<string>>(new Set());
+  const now = useApprovalClock(stores.map((store) => store.completedAt.approved));
+  const liveStores = useMemo(
+    () =>
+      stores.map((store) => {
+        const status = revealApproval(store.status, store.completedAt, now);
+        return { ...store, status, label: storeOnboardingLabel(status) };
+      }),
+    [stores, now],
+  );
 
   const byCustomer = useMemo(() => {
     const map = new Map<string, CustomerStore[]>();
-    for (const store of stores) {
+    for (const store of liveStores) {
       const list = map.get(store.customerId) ?? [];
       list.push(store);
       map.set(store.customerId, list);
     }
     return map;
-  }, [stores]);
+  }, [liveStores]);
 
   const visible = customers.filter((customer) =>
     customer.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
   const visibleIds = new Set(visible.map((customer) => customer.id));
-  const visibleStores = stores.filter((store) => visibleIds.has(store.customerId));
+  const visibleStores = liveStores.filter((store) => visibleIds.has(store.customerId));
 
   const toggleBrand = (id: string) => {
     setOpenId((current) => (current === id ? null : id));
-    setOpenCities(new Set());
-  };
-
-  const toggleCity = (key: string) => {
-    setOpenCities((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
   };
 
   return (
@@ -148,8 +136,6 @@ export function CustomersTable({
                 const customerStores = byCustomer.get(customer.id) ?? [];
                 const count = customerStores.length;
                 const open = openId === customer.id;
-                const grouped = customerStores.length > GROUP_AT;
-                const cities = grouped ? groupByCity(customerStores) : [];
                 return (
                   <Fragment key={customer.id}>
                     <TableRow>
@@ -186,39 +172,6 @@ export function CustomersTable({
                             <p className="py-2 text-sm text-muted-foreground">
                               No locations listed for this customer.
                             </p>
-                          ) : grouped ? (
-                            <div className="flex flex-col">
-                              {cities.map(([city, cityStores]) => {
-                                const cityKey = `${customer.id}:${city}`;
-                                const cityOpen = openCities.has(cityKey);
-                                return (
-                                  <div key={cityKey} className="border-b border-border/60 last:border-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleCity(cityKey)}
-                                      aria-expanded={cityOpen}
-                                      className="flex w-full items-center gap-2 py-2 text-left text-sm"
-                                    >
-                                      <ChevronRightIcon
-                                        className={`size-3.5 text-muted-foreground transition-transform ${cityOpen ? "rotate-90" : ""}`}
-                                      />
-                                      <span className="font-medium">{city}</span>
-                                      <span className="text-muted-foreground">
-                                        {cityStores.length}{" "}
-                                        {cityStores.length === 1 ? "location" : "locations"}
-                                      </span>
-                                    </button>
-                                    {cityOpen && (
-                                      <div className="divide-y pl-6">
-                                        {cityStores.map((store) => (
-                                          <StoreLine key={store.id} store={store} />
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
                           ) : (
                             <div className="divide-y pl-6">
                               {customerStores.map((store) => (

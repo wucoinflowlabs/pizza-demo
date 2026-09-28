@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { CheckIcon, CircleIcon } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { ASSUME_APPROVED_ON_SUBMIT } from "@/config/onboarding";
@@ -14,6 +14,7 @@ import { DetailsStep } from "./details-step";
 import { OwnerVerificationStep } from "./owner-verification-step";
 import { SubmitStep } from "./submit-step";
 import { UnderReviewScreen } from "./under-review-screen";
+import { SUBMIT_TO_APPROVAL_MS } from "@/features/operator/store-status";
 
 type StepId = "account" | "business" | "owners" | "details" | "submit";
 
@@ -29,6 +30,42 @@ function isApproved(progress: SubmerchantProgress): boolean {
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_ATTEMPTS = 15;
+
+function holdKey(merchantId: string) {
+  return `za-approval-hold:${merchantId}`;
+}
+
+/** Survives the route refresh that follows a server action, so the wait is not skipped. */
+function storedHold(merchantId: string): number | undefined {
+  try {
+    const until = Number(sessionStorage.getItem(holdKey(merchantId)));
+    if (!Number.isFinite(until) || until <= Date.now()) {
+      sessionStorage.removeItem(holdKey(merchantId));
+      return undefined;
+    }
+    return until;
+  } catch {
+    return undefined;
+  }
+}
+
+function rememberHold(merchantId: string) {
+  const until = Date.now() + SUBMIT_TO_APPROVAL_MS;
+  try {
+    sessionStorage.setItem(holdKey(merchantId), String(until));
+  } catch {
+    // Private browsing can reject storage; the in-memory timer still runs.
+  }
+  return until;
+}
+
+function clearHold(merchantId: string) {
+  try {
+    sessionStorage.removeItem(holdKey(merchantId));
+  } catch {
+    // Ignore storage failures.
+  }
+}
 
 // Mirrors the provider's onboarding step rules (owner verification only
 // appears once the business itself is verified).
@@ -88,8 +125,30 @@ export function ApplicationJourney({
   const [progress, setProgress] = useState(initialProgress);
   const [stepId, setStepId] = useState<StepId>(() => initialStep(initialProgress));
   const [checking, setChecking] = useState(false);
+  const [releaseApprovalAt, setReleaseApprovalAt] = useState<number>();
   const steps = useMemo(() => buildSteps(progress), [progress]);
   const visibleSteps = steps.filter((step) => !step.hidden);
+  const approvalHeld = releaseApprovalAt !== undefined && releaseApprovalAt > Date.now();
+
+  const beginReview = (merchantId: string) => {
+    setReleaseApprovalAt(rememberHold(merchantId));
+  };
+
+  // A server-action refresh remounts this screen with an already-approved
+  // account. Restore the wait before paint so approval does not flash early.
+  useLayoutEffect(() => {
+    const until = storedHold(progress.merchantId);
+    if (until) setReleaseApprovalAt(until);
+  }, [progress.merchantId]);
+
+  useEffect(() => {
+    if (!approvalHeld || releaseApprovalAt === undefined) return;
+    const timer = window.setTimeout(() => {
+      clearHold(progress.merchantId);
+      setReleaseApprovalAt(undefined);
+    }, releaseApprovalAt - Date.now());
+    return () => window.clearTimeout(timer);
+  }, [approvalHeld, releaseApprovalAt, progress.merchantId]);
 
   const goTo = (id: StepId) => {
     setStepId(id);
@@ -129,6 +188,9 @@ export function ApplicationJourney({
   };
 
   const businessName = typeof initialValues.dba === "string" ? initialValues.dba : undefined;
+  const loginEmail =
+    progress.accountEmail ??
+    (typeof initialValues.businessEmail === "string" ? initialValues.businessEmail : undefined);
 
   const content: Record<StepId, React.ReactNode> = {
     account: (
@@ -162,19 +224,15 @@ export function ApplicationJourney({
         locked={progress.applicationSubmitted}
         onSubmitted={(next) => {
           setProgress(next);
+          if (isApproved(next)) beginReview(next.merchantId);
           goTo("submit");
         }}
       />
     ),
-    submit: isApproved(progress) ? (
-      <ApprovedScreen businessName={businessName} />
-    ) : progress.applicationSubmitted ? (
-      <UnderReviewScreen
-        referenceId={progress.merchantId}
-        onCheckStatus={async () => {
-          await refresh();
-        }}
-      />
+    submit: isApproved(progress) && !approvalHeld ? (
+      <ApprovedScreen businessName={businessName} email={loginEmail} />
+    ) : progress.applicationSubmitted || approvalHeld ? (
+      <UnderReviewScreen />
     ) : (
       <SubmitStep
         progress={progress}
@@ -185,6 +243,7 @@ export function ApplicationJourney({
         onBack={() => goTo("details")}
         onSubmitted={(next) => {
           setProgress(next);
+          beginReview(next.merchantId);
           window.scrollTo({ top: 0 });
         }}
       />

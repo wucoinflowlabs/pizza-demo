@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 import { signOutMerchant } from "../actions";
 import { MERCHANT_PRODUCTS } from "../products";
+import { shopThemeStyle, type ShopTheme } from "../shop-theme";
 
 const PRODUCT_ICONS: Record<(typeof MERCHANT_PRODUCTS)[number]["slug"], LucideIcon> = {
   "point-of-sale": MonitorIcon,
@@ -60,20 +61,20 @@ function NavItem({
       aria-current={active ? "page" : undefined}
       onClick={onNavigate}
       className={cn(
-        "group flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-adora-blue focus-visible:ring-offset-2 focus-visible:ring-offset-adora-surface focus-visible:outline-none",
+        "group flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-shop-accent focus-visible:ring-offset-2 focus-visible:ring-offset-shop-surface focus-visible:outline-none",
         active
-          ? "bg-white text-adora-navy shadow-[0_10px_24px_-16px_rgba(13,61,133,0.75)] ring-1 ring-adora-navy/10"
-          : "text-foreground/80 hover:bg-white/80 hover:text-adora-navy",
+          ? "bg-white text-shop-ink shadow-[0_10px_24px_-16px_var(--shop-ink)] ring-1 ring-shop-ink/10"
+          : "text-foreground/80 hover:bg-white/80 hover:text-shop-ink",
       )}
     >
       <span
         className={cn(
           "flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors",
           active
-            ? "bg-adora-navy text-white"
+            ? "bg-shop-fill text-shop-on-fill"
             : accent
-              ? "bg-adora-blue/12 text-adora-blue ring-1 ring-adora-blue/20"
-              : "bg-white text-adora-navy/55 ring-1 ring-adora-navy/10 group-hover:text-adora-navy",
+              ? "bg-shop-accent/12 text-shop-accent ring-1 ring-shop-accent/20"
+              : "bg-white text-shop-ink/55 ring-1 ring-shop-ink/10 group-hover:text-shop-ink",
         )}
       >
         <Icon className="size-4" />
@@ -144,14 +145,14 @@ function AccountMark({
 }) {
   if (logo) {
     return (
-      <span className="flex h-11 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-adora-navy/10">
+      <span className="flex h-11 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-shop-ink/10">
         <img src={logo} alt="" className="max-h-9 max-w-14 object-contain" />
       </span>
     );
   }
 
   return (
-    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-adora-navy to-adora-blue font-heading text-xs font-bold text-white">
+    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-shop-fill font-heading text-xs font-bold text-shop-on-fill">
       {accountMark(name, email)}
     </span>
   );
@@ -184,10 +185,10 @@ function SidebarBody({
       </Link>
       <div
         aria-hidden
-        className="mx-1.5 mt-5 mb-4 h-px bg-gradient-to-r from-transparent via-adora-blue/35 to-transparent"
+        className="mx-1.5 mt-5 mb-4 h-px bg-gradient-to-r from-transparent via-shop-accent/35 to-transparent"
       />
       <NavLinks onNavigate={onNavigate} />
-      <div className="mt-6 rounded-2xl bg-white p-3 shadow-[0_16px_40px_-28px_rgba(13,61,133,0.9)] ring-1 ring-adora-navy/10">
+      <div className="mt-6 rounded-2xl bg-white p-3 shadow-[0_16px_40px_-28px_var(--shop-ink)] ring-1 ring-shop-ink/10">
         <div className="flex items-center gap-2.5 px-0.5">
           <AccountMark name={shop} email={email} logo={shopLogo} />
           <span className="min-w-0">
@@ -204,7 +205,7 @@ function SidebarBody({
             type="submit"
             variant="ghost"
             size="sm"
-            className="h-8 w-full text-muted-foreground hover:bg-adora-surface hover:text-adora-navy"
+            className="h-8 w-full text-muted-foreground hover:bg-shop-surface hover:text-shop-ink"
           >
             <LogOutIcon />
             Sign out
@@ -220,12 +221,14 @@ export function DashboardShell({
   email,
   name,
   shopLogo,
+  theme,
   children,
 }: {
   logo: ReactNode;
   email: string;
   name?: string | null;
   shopLogo?: string;
+  theme: ShopTheme;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -237,21 +240,21 @@ export function DashboardShell({
   }, [pathname]);
 
   return (
-    <div className="flex min-h-full flex-1">
-      <aside className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-adora-navy/10 bg-gradient-to-b from-adora-surface via-adora-surface to-background md:flex">
+    <div className="flex min-h-full flex-1" style={shopThemeStyle(theme)}>
+      <aside className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-shop-ink/10 bg-gradient-to-b from-shop-surface via-shop-surface to-background md:flex">
         <SidebarBody logo={logo} email={email} name={name} shopLogo={shopLogo} />
       </aside>
       {open && (
         <button
           type="button"
           aria-label="Close menu"
-          className="fixed inset-0 z-40 bg-adora-navy/30 backdrop-blur-[2px] md:hidden"
+          className="fixed inset-0 z-40 bg-shop-ink/30 backdrop-blur-[2px] md:hidden"
           onClick={() => setOpen(false)}
         />
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 flex-col overflow-y-auto border-r border-adora-navy/10 bg-gradient-to-b from-adora-surface via-adora-surface to-background md:hidden",
+          "fixed inset-y-0 left-0 z-50 w-72 flex-col overflow-y-auto border-r border-shop-ink/10 bg-gradient-to-b from-shop-surface via-shop-surface to-background md:hidden",
           open ? "animate-in slide-in-from-left flex duration-200" : "hidden",
         )}
       >
@@ -263,8 +266,8 @@ export function DashboardShell({
           onNavigate={() => setOpen(false)}
         />
       </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-3 border-b border-adora-navy/10 bg-adora-surface/90 px-4 py-3 backdrop-blur md:hidden">
+      <div className="flex min-w-0 flex-1 flex-col bg-gradient-to-b from-shop-surface to-background">
+        <div className="flex items-center gap-3 border-b border-shop-ink/10 bg-shop-surface/90 px-4 py-3 backdrop-blur md:hidden">
           <Button
             type="button"
             variant="outline"
@@ -272,7 +275,7 @@ export function DashboardShell({
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
-            className="border-adora-navy/10 bg-white text-adora-navy"
+            className="border-shop-ink/10 bg-white text-shop-ink"
           >
             {open ? <XIcon /> : <MenuIcon />}
           </Button>

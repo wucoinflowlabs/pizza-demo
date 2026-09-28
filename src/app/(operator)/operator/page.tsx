@@ -5,7 +5,11 @@ import { ADORA_STORES } from "@/features/operator/adora-stores";
 import { OperatorConsole } from "@/features/operator/components/operator-console";
 import { SettlementSweep } from "@/features/operator/components/settlement-sweep";
 import { applicationMatchesStore } from "@/features/operator/store-account";
-import { storeOnboardingLabel, storeOnboardingStatus } from "@/features/operator/store-status";
+import {
+  onboardingCompletedAt,
+  storeOnboardingLabel,
+  storeOnboardingStatus,
+} from "@/features/operator/store-status";
 
 export const metadata: Metadata = { title: "Adora customers" };
 
@@ -36,7 +40,12 @@ export default async function OperatorPage() {
       applicationMatchesStore(item.merchantId, store.customerId, store.id),
     );
     const status = storeOnboardingStatus(application);
-    return { ...store, status, label: storeOnboardingLabel(status) };
+    return {
+      ...store,
+      status,
+      label: storeOnboardingLabel(status),
+      completedAt: onboardingCompletedAt(application),
+    };
   });
 
   return (

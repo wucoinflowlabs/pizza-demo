@@ -78,8 +78,8 @@ export function AdoraPayActivity({
     <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8 lg:grid-cols-[1fr_1.1fr]">
       <section className="flex flex-col gap-4">
         <div>
-          <p className="text-sm font-semibold text-adora-blue">Adora Pay</p>
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-adora-navy">
+          <p className="text-sm font-semibold text-shop-accent">Adora Pay</p>
+          <h1 className="font-heading text-3xl font-bold tracking-tight text-shop-ink">
             {snapshot.businessName ?? "Adora Pay"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Account {snapshot.merchantId}</p>
@@ -92,7 +92,7 @@ export function AdoraPayActivity({
                 {visible && step.done ? (
                   <CheckIcon className="size-4 text-emerald-600" />
                 ) : visible ? (
-                  <RadioIcon className="size-4 text-adora-blue" />
+                  <RadioIcon className="size-4 text-shop-accent" />
                 ) : (
                   <CircleIcon className="size-4 text-muted-foreground/40" />
                 )}
@@ -102,14 +102,14 @@ export function AdoraPayActivity({
           })}
         </ol>
       </section>
-      <section className="flex min-h-80 flex-col overflow-hidden rounded-xl bg-adora-navy text-white">
-        <header className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+      <section className="flex min-h-80 flex-col overflow-hidden rounded-xl bg-shop-fill text-shop-on-fill">
+        <header className="flex items-center justify-between border-b border-shop-on-fill/10 px-4 py-3">
           <h2 className="font-heading text-sm font-semibold">Webhooks</h2>
-          <span className="flex items-center gap-2 text-xs text-white/70">
+          <span className="flex items-center gap-2 text-xs text-shop-on-fill/70">
             <span
               className={cn(
                 "size-2 rounded-full",
-                listening ? "animate-pulse bg-emerald-400" : "bg-white/40",
+                listening ? "animate-pulse bg-emerald-400" : "bg-shop-on-fill/40",
               )}
             />
             {listening ? "Listening" : "Paused"}
@@ -118,14 +118,14 @@ export function AdoraPayActivity({
         <ol className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 font-mono text-xs">
           {events.map((event) => (
             <li key={event.id} className="flex flex-col gap-1">
-              <span className="text-white/50">
+              <span className="text-shop-on-fill/50">
                 {formatTime(event.at)} · {event.type}
               </span>
-              <span className="text-sm text-white/95">{event.summary}</span>
+              <span className="text-sm text-shop-on-fill/95">{event.summary}</span>
             </li>
           ))}
           {events.length === 0 && (
-            <li className="text-white/50">Waiting for the first event…</li>
+            <li className="text-shop-on-fill/50">Waiting for the first event…</li>
           )}
         </ol>
       </section>

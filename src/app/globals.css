@@ -14,6 +14,15 @@
   --color-adora-blue: #447eec;
   --color-adora-sky: #6ac4ef;
   --color-adora-surface: #f5f8fe;
+  --color-shop-fill: var(--shop-fill);
+  --color-shop-ink: var(--shop-ink);
+  --color-shop-accent: var(--shop-accent);
+  --color-shop-highlight: var(--shop-highlight);
+  --color-shop-surface: var(--shop-surface);
+  --color-shop-on-fill: var(--shop-on-fill);
+  --color-shop-glow: var(--shop-glow);
+  --color-shop-panel: var(--shop-panel);
+  --color-shop-panel-hover: var(--shop-panel-hover);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -60,6 +69,15 @@
   --input: oklch(0.9 0.008 250);
   --ring: oklch(0.6 0.17 262);
   --radius: 0.75rem;
+  --shop-fill: #3e3832;
+  --shop-ink: #3e3832;
+  --shop-accent: #9a4e24;
+  --shop-highlight: #e7b089;
+  --shop-surface: #f7f3ee;
+  --shop-on-fill: #ffffff;
+  --shop-glow: var(--shop-accent);
+  --shop-panel: color-mix(in srgb, var(--shop-on-fill) 10%, transparent);
+  --shop-panel-hover: color-mix(in srgb, var(--shop-on-fill) 15%, transparent);
 }
 
 @layer base {
@@ -72,6 +90,17 @@
   html {
     @apply font-sans;
   }
+}
+
+/* Dot texture on merchant fills. Uses the fill's own text color so light and dark brands both read. */
+.shop-dots {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--shop-on-fill) 18%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
 }
 
 /* Coinflow activity panel: on wide screens it sits beside the page instead of over it. */

@@ -15,7 +15,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { signInMerchant } from "../actions";
 
-export function MerchantSignIn() {
+export function MerchantSignIn({ defaultEmail }: { defaultEmail?: string }) {
   const [state, formAction, pending] = useActionState(signInMerchant, undefined);
   const [passwordVisible, setPasswordVisible] = useState(false);
 
@@ -35,6 +35,7 @@ export function MerchantSignIn() {
               name="email"
               type="email"
               autoComplete="username"
+              defaultValue={defaultEmail}
               aria-invalid={!!state?.error}
               required
             />

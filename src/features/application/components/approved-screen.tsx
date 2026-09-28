@@ -15,6 +15,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { brand } from "@/config/brand";
 import { setupSettlement, type SettlementSetupState } from "../actions";
+import { dashboardLoginHref } from "../login-href";
 
 const PAYOUT_COPY: Record<
   SettlementSetupState,
@@ -117,7 +118,13 @@ const NEXT_STEPS = [
   "Earnings settle automatically — track them from your dashboard.",
 ];
 
-export function ApprovedScreen({ businessName }: { businessName?: string }) {
+export function ApprovedScreen({
+  businessName,
+  email,
+}: {
+  businessName?: string;
+  email?: string;
+}) {
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -140,7 +147,10 @@ export function ApprovedScreen({ businessName }: { businessName?: string }) {
         </CardContent>
       </Card>
       <PayoutSetupCard />
-      <Link href="/login" className={cn(buttonVariants({ size: "lg" }), "self-start")}>
+      <Link
+        href={dashboardLoginHref(email)}
+        className={cn(buttonVariants({ size: "lg" }), "self-start")}
+      >
         Sign in to merchant dashboard
       </Link>
     </div>

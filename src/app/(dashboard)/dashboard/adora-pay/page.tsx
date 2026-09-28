@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AdoraPayActivity } from "@/features/dashboard/components/adora-pay-activity";
 import { AdoraPaySignup } from "@/features/dashboard/components/adora-pay-signup";
 import { LAMONICA_EMAIL, LAMONICA_PREFILL } from "@/features/dashboard/lamonica";
+import { merchantSignupPrefill } from "@/features/dashboard/signup-prefill";
 import { eventsFromSnapshot, snapshotFromProgress } from "@/features/dashboard/pay-status";
 import { getMerchantLogin } from "@/lib/merchant-logins";
 import { findSubmerchantIdByEmail } from "@/lib/payments/submerchants";
@@ -19,11 +20,7 @@ export default async function AdoraPayPage() {
 
   const submerchantId = await findSubmerchantIdByEmail(login.email);
   if (!submerchantId) {
-    const prefill =
-      login.email === LAMONICA_EMAIL
-        ? LAMONICA_PREFILL
-        : { businessEmail: login.email, billingEmail: login.email };
-    return <AdoraPaySignup prefill={prefill} />;
+    return <AdoraPaySignup prefill={merchantSignupPrefill(login.email)} />;
   }
 
   const progress = await getSubmerchantProgress(submerchantId);
