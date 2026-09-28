@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_rethrow } from "next/navigation";
 import { describePaymentsCall } from "@/lib/devtools/labels";
 import { redact } from "@/lib/devtools/redact";
 import { recordEventInBackground } from "@/lib/devtools/store";
@@ -55,6 +56,8 @@ export async function paymentsRequest<T>({
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch (err) {
+    // Let Next.js internal errors (e.g. dynamic-usage bailout during prerender) propagate.
+    unstable_rethrow(err);
     console.error(`[payments] ${method} ${path} failed to send`, err);
     record({ error: String(err) });
     throw new PaymentsError({ code: "UNKNOWN", detail: String(err) });
