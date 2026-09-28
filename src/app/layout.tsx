@@ -4,6 +4,8 @@ import { BrandFooter } from "@/components/brand/brand-footer";
 import { BrandHeader } from "@/components/brand/brand-header";
 import { SiteFrame } from "@/components/brand/site-frame";
 import { brand } from "@/config/brand";
+import { DevtoolsPanel } from "@/features/devtools/components/devtools-panel";
+import { isDevtoolsEnabled } from "@/lib/devtools/store";
 import "./globals.css";
 
 const sans = Inter({ variable: "--font-sans", subsets: ["latin"] });
@@ -26,6 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SiteFrame header={<BrandHeader />} footer={<BrandFooter />}>
           {children}
         </SiteFrame>
+        {isDevtoolsEnabled() && <DevtoolsPanel />}
       </body>
     </html>
   );

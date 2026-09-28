@@ -1,4 +1,5 @@
 import "server-only";
+import { recordEventInBackground } from "@/lib/devtools/store";
 import { paymentsRequest } from "./client";
 import { PaymentsError } from "./errors";
 
@@ -23,11 +24,24 @@ export async function uploadSubmerchantFile({
     asSubmerchant: submerchantId,
   });
 
+  const startedAt = Date.now();
   const response = await fetch(uploadUrl, {
     method: "PUT",
     headers: { "content-type": contentType },
     body: Buffer.from(await file.arrayBuffer()),
     signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+  });
+  // The presigned URL is a credential, so only its host is shown.
+  recordEventInBackground({
+    direction: "outgoing",
+    ts: startedAt,
+    label: "Upload document bytes",
+    method: "PUT",
+    path: new URL(uploadUrl).host,
+    submerchantId,
+    requestBody: { fileName: file.name, contentType, bytes: file.size },
+    status: response.status,
+    durationMs: Date.now() - startedAt,
   });
   if (!response.ok) {
     console.error(`[payments] file upload failed with ${response.status}`);

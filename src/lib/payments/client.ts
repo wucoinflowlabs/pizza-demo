@@ -1,4 +1,8 @@
 import "server-only";
+import { describePaymentsCall } from "@/lib/devtools/labels";
+import { redact } from "@/lib/devtools/redact";
+import { recordEventInBackground } from "@/lib/devtools/store";
+import { summarizeResponse } from "@/lib/devtools/summarize";
 import { getPaymentsEnv } from "./env";
 import { PaymentsError, paymentsErrorFromResponse } from "./errors";
 
@@ -19,6 +23,20 @@ export async function paymentsRequest<T>({
   asSubmerchant?: string;
 }): Promise<T> {
   const { PAYMENTS_API_BASE_URL, PAYMENTS_API_KEY } = getPaymentsEnv();
+  const startedAt = Date.now();
+  const record = (result: { status?: number; responseBody?: unknown; error?: string }) =>
+    recordEventInBackground({
+      direction: "outgoing",
+      ts: startedAt,
+      label: describePaymentsCall(method, path),
+      method,
+      path,
+      submerchantId: asSubmerchant,
+      requestBody: redact(body),
+      durationMs: Date.now() - startedAt,
+      ...result,
+      responseBody: redact(summarizeResponse(result.responseBody)),
+    });
 
   let response: Response;
   try {
@@ -38,11 +56,15 @@ export async function paymentsRequest<T>({
     });
   } catch (err) {
     console.error(`[payments] ${method} ${path} failed to send`, err);
+    record({ error: String(err) });
     throw new PaymentsError({ code: "UNKNOWN", detail: String(err) });
   }
 
   const parsed = await parseBody(response);
-  if (response.ok) return parsed as T;
+  if (response.ok) {
+    record({ status: response.status, responseBody: parsed });
+    return parsed as T;
+  }
 
 
   const error = paymentsErrorFromResponse({
@@ -50,6 +72,7 @@ export async function paymentsRequest<T>({
     body: parsed,
   });
   console.error(`[payments] ${method} ${path} → ${error.message}`);
+  record({ status: response.status, responseBody: parsed, error: error.message });
   throw error;
 }
 

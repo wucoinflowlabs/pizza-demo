@@ -73,3 +73,14 @@
     @apply font-sans;
   }
 }
+
+/* Coinflow activity panel: on wide screens it sits beside the page instead of over it. */
+:root {
+  --devtools-width: 420px;
+}
+
+@media (min-width: 64rem) {
+  html[data-devtools-open] body {
+    padding-right: var(--devtools-width);
+  }
+}
