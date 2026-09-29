@@ -19,7 +19,7 @@ export type ShopTheme = {
   shadow?: string;
   /** Soft wash in the top-right of the home card. Defaults to `accent`. */
   glow?: string;
-  /** Home-card side panel. Defaults to a tint of `onFill`. */
+  /** Home-card side panel. Defaults to a bright white card. */
   panel?: string;
   panelHover?: string;
 };
@@ -44,8 +44,6 @@ const THEMES: Record<string, ShopTheme> = {
     onFill: "#181848",
     shadow: "transparent",
     glow: "#FFE08A",
-    panel: "color-mix(in srgb, white 22%, transparent)",
-    panelHover: "color-mix(in srgb, white 32%, transparent)",
   },
   mmp: {
     fill: "#0E5A42",
@@ -131,9 +129,8 @@ export function shopThemeStyle(theme: ShopTheme): CSSProperties {
     "--shop-on-fill": theme.onFill,
     "--shop-shadow": theme.shadow ?? theme.ink,
     "--shop-glow": theme.glow ?? theme.accent,
-    "--shop-panel": theme.panel ?? "color-mix(in srgb, var(--shop-on-fill) 10%, transparent)",
-    "--shop-panel-hover":
-      theme.panelHover ?? "color-mix(in srgb, var(--shop-on-fill) 15%, transparent)",
+    "--shop-panel": theme.panel ?? "#ffffff",
+    "--shop-panel-hover": theme.panelHover ?? "#ffffff",
     "--primary": theme.ink,
     "--primary-foreground": "#ffffff",
     "--ring": theme.accent,

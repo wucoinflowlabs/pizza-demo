@@ -8,7 +8,6 @@ import {
   CopyIcon,
   ExternalLinkIcon,
   Loader2Icon,
-  SparklesIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { OnboardingFields } from "@/components/onboarding-form/onboarding-fields";
@@ -25,6 +24,8 @@ import {
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
+  ADORA_PREFILL,
+  businessOverview,
   PLATFORM_FIELDS,
   validateForm,
   withoutKey,
@@ -32,23 +33,20 @@ import {
   type FieldValue,
   type FormValues,
 } from "@/lib/onboarding-form";
-import {
-  createApplication,
-  generateSampleApplication,
-  type CreateApplicationResult,
-} from "../actions";
+import { createApplication, type CreateApplicationResult } from "../actions";
 
 type Created = Extract<CreateApplicationResult, { ok: true }>;
 
 // Demo prefill: every field stays editable.
 const PREFILLED_EMAIL = "chris@coinflowlabs.app";
 const PREFILLED_VALUES: FormValues = {
+  ...ADORA_PREFILL,
   dba: "Giordano's Pizza",
   businessPhoneCountryCode: "+1",
   businessPhoneNumber: "(312) 555-0147",
   businessEmail: "chris@coinflowlabs.app",
   billingEmail: "chris@coinflowlabs.app",
-  whatDoesYourBusinessDo: "The best deep dish in chicago",
+  whatDoesYourBusinessDo: businessOverview({ name: "Giordano's Pizza", place: "Chicago, IL" }),
   websiteUrl: "https://giordanos.com/",
 };
 
@@ -57,10 +55,13 @@ function CreatedCard({ created, onReset }: { created: Created; onReset: () => vo
     <Card>
       <CardHeader>
         <CheckCircle2Icon className="size-8 text-primary" />
-        <CardTitle className="text-xl">Business account created</CardTitle>
+        <CardTitle className="text-xl">
+          {created.reused ? "Existing account linked" : "Business account created"}
+        </CardTitle>
         <CardDescription>
-          Send this link to the business. They&apos;ll verify their business and owners, then finish the
-          few questions only they can answer.
+          {created.reused
+            ? "This email already had a payments account. Send this link so the business can finish onboarding on that account."
+            : "Send this link to the business. They'll verify their business and owners, then finish the few questions only they can answer."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -127,21 +128,11 @@ export function NewApplicationForm({
   const [created, setCreated] = useState<Created>();
   const [formKey, setFormKey] = useState(0);
   const [submitting, startSubmit] = useTransition();
-  const [sampling, startSample] = useTransition();
 
   const onChange = (name: string, value: FieldValue) => {
     setValues((current) => ({ ...current, [name]: value }));
     setErrors((current) => withoutKey(current, name));
   };
-
-  const fillSample = () =>
-    startSample(async () => {
-      const sample = await generateSampleApplication();
-      setEmail(sample.email);
-      setValues(sample.values);
-      setErrors({});
-      setFormKey((key) => key + 1);
-    });
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -178,21 +169,9 @@ export function NewApplicationForm({
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Enable payment processing{customerName && ` for ${customerName}`}
-          </h1>
-        </div>
-        <Button type="button" variant="outline" onClick={fillSample} disabled={sampling}>
-          {sampling ? (
-            <Loader2Icon data-icon="inline-start" className="animate-spin" />
-          ) : (
-            <SparklesIcon data-icon="inline-start" />
-          )}
-          Fill with sample data
-        </Button>
-      </div>
+      <h1 className="font-heading text-2xl font-semibold tracking-tight">
+        Enable payment processing{customerName && ` for ${customerName}`}
+      </h1>
 
       <Card>
         <CardContent>
@@ -211,7 +190,7 @@ export function NewApplicationForm({
                 setErrors((current) => withoutKey(current, "email"));
               }}
             />
-            <FieldDescription>The business signs in with this. It must not already have an account.</FieldDescription>
+            <FieldDescription>The business signs in with this.</FieldDescription>
             <FieldError>{errors.email}</FieldError>
           </Field>
         </CardContent>

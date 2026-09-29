@@ -1,9 +1,8 @@
 import type { FieldDefinition, FormValues, SelectOption } from "./types";
 
-// Mirrors the provider's LEGACY v2 onboarding form (labels, order, sections
-// and show/hide rules). Deliberate differences: crypto and third-party-branded
-// payment options are omitted, provider names are reworded, and answers that
-// are the same for every pizzeria are hardcoded in FIXED_FIELDS instead of asked.
+// Visible questions are the Adora peel-back of Coinflow's legacy v2 form.
+// Everything else Coinflow still requires is filled in with HIDDEN_DEFAULTS
+// at submit time and never shown to the merchant.
 
 const YES_NO: readonly SelectOption[] = [
   { label: "Yes", value: "yes" },
@@ -23,27 +22,57 @@ export const REGION_OPTIONS: readonly SelectOption[] = [
   "Africa",
 ].map((region) => ({ label: region, value: region }));
 
-/** Always sent and never asked: the same for every pizzeria on Adora. */
+const PAYIN_METHOD_OPTIONS: readonly SelectOption[] = [
+  { value: "card", label: "Credit & Debit" },
+  { value: "applePay", label: "Apple Pay" },
+  { value: "googlePay", label: "Google Pay" },
+  { value: "cashApp", label: "Cash App" },
+  { value: "paypal", label: "PayPal" },
+  { value: "venmo", label: "Venmo" },
+];
+
+const PAYOUT_METHOD_OPTIONS: readonly SelectOption[] = [
+  { value: "standard", label: "ACH" },
+  { value: "asap", label: "RTP" },
+  { value: "card", label: "Push-to-Card" },
+  { value: "venmo", label: "Venmo" },
+  { value: "paypal", label: "PayPal" },
+];
+
+/** Sent on every application and never asked. Fills only keys the merchant left empty. */
 export const FIXED_FIELDS = {
-  settlementMethods: "bankAccountSettlement",
   industry: "foodBeverage",
   products: "checkout,userPayouts",
-  bankSettlementMethods: "ach",
+  settlementMethods: "bankAccountSettlement",
+  bankSettlementMethods: "ach,wire",
   businessCountryOfIncorporation: "US",
   endUserGeoDistribution: [{ region: "US", percentage: 100 }],
-  activeCustomers: "<10,000",
+  activeCustomers: "10,000 - 100,000",
   customerSupportMethods: "live",
-  payinMethods: "card,googlePay,applePay,venmo,paypal,cashApp",
-  payinsMonthlyVolume: { currency: "usd", amount: 10_000 },
   payinsAverageTransactionSize: { currency: "usd", amount: 60 },
-  payinsMaximumTransactionSize: { currency: "usd", amount: 5_000 },
-  // Venmo, PayPal, push to card, ACH and RTP.
-  payoutMethods: "venmo,paypal,card,standard,asap",
-  payoutsMonthlyVolume: { currency: "usd", amount: 10_000 },
-  payoutsAverageTransactionSize: { currency: "usd", amount: 60 },
-  payoutsMaximumTransactionSize: { currency: "usd", amount: 5_000 },
+  payinsMaximumTransactionSize: { currency: "usd", amount: 1_000 },
+  payoutsAverageTransactionSize: { currency: "usd", amount: 40 },
+  payoutsMaximumTransactionSize: { currency: "usd", amount: 1_000 },
   pciComplianceStatus: "no",
+  historicalChargebackRate: "<0.25%",
+  averageDollarValueChargeback: "25",
+  paymentProcessingAgreementTerminated: "no",
+  // Coinflow requires a non-empty string once acceptedPaymentsBefore is yes.
+  // Not a file key (those start with merchants/), so review won't try to download it.
+  processingStatements: "Collected by Adora",
 } satisfies FormValues;
+
+/** Answers Adora already knows. Method checkboxes are intentionally absent. */
+export const ADORA_PREFILL: FormValues = {
+  acceptedPaymentsBefore: "yes",
+  currentRunway: ">18 months/profitable",
+  payinsMonthlyVolume: { currency: "usd", amount: 10_000 },
+  payoutsMonthlyVolume: { currency: "usd", amount: 10_000 },
+  cardNotPresentPercent: "40",
+};
+
+/** UI-only. Drives whether the website question is shown, then stripped before Coinflow. */
+export const UI_ONLY_FIELDS = ["cardNotPresentPercent"] as const;
 
 /** Also never asked: the testing URL and every policy link are the business's website. */
 export const WEBSITE_URL_COPIES = [
@@ -52,6 +81,10 @@ export const WEBSITE_URL_COPIES = [
   "termsOfServiceUrl",
   "returnPolicyUrl",
 ] as const;
+
+export function businessOverview({ name, place }: { name: string; place: string }): string {
+  return `${name}, based in ${place}, runs on Adora. Guests order in the store and through Adora online ordering.`;
+}
 
 export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
   {
@@ -85,7 +118,7 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     type: "email",
     label: "Billing Email",
     placeholder: "billing@yourbusiness.com",
-    required: true,
+    required: false,
     audience: "platform",
     sameAsField: {
       field: "businessEmail",
@@ -93,11 +126,52 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     },
   },
   {
-    name: "whatDoesYourBusinessDo",
-    type: "textarea",
-    label: "Business Overview",
-    placeholder:
-      "Please provide an overview of what your business does, and describe the products or services your business will be accepting payments for.",
+    name: "acceptedPaymentsBefore",
+    type: "select",
+    label: "Has your business accepted payments before?",
+    placeholder: "Select whether your business accepted payments before?",
+    required: true,
+    audience: "platform",
+    sectionHeader: "Historical Payment Information",
+    options: YES_NO,
+  },
+  {
+    name: "currentRunway",
+    type: "select",
+    label: "How many months can your business operate with its current cash balance?",
+    placeholder: "Select your current runway",
+    required: true,
+    audience: "platform",
+    options: [
+      { label: "< 6 months", value: "< 6 months" },
+      { label: "6 - 12 months", value: "6 - 12 months" },
+      { label: "13 - 18 months", value: "13 - 18 months" },
+      { label: ">18 months/profitable", value: ">18 months/profitable" },
+    ],
+  },
+  {
+    name: "payinMethods",
+    type: "multiselect",
+    label: "Which pay-in methods will you utilize?",
+    placeholder: "Select pay-in methods",
+    required: true,
+    audience: "business",
+    sectionHeader: "Pay-in",
+    options: PAYIN_METHOD_OPTIONS,
+  },
+  {
+    name: "payinsMonthlyVolume",
+    type: "money-amount",
+    label: "Estimated monthly pay-in volume across all pay-in products",
+    placeholder: "Estimated monthly pay-in volume",
+    required: true,
+    audience: "platform",
+  },
+  {
+    name: "cardNotPresentPercent",
+    type: "percent",
+    label: "What percentage of your volume will be card-not-present?",
+    placeholder: "0–100",
     required: true,
     audience: "platform",
   },
@@ -109,115 +183,35 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     required: true,
     audience: "platform",
     sectionHeader: "Production Website URLs",
+    conditional: { dependsOn: "cardNotPresentPercent", value: 0, compare: "gt" },
   },
   {
-    name: "acceptedPaymentsBefore",
-    type: "select",
-    label: "Has your business accepted payments before?",
-    placeholder: "Select whether your business accepted payments before?",
+    name: "payoutMethods",
+    type: "multiselect",
+    label: "Which payout methods will you utilize?",
+    placeholder: "Select payout methods",
     required: true,
     audience: "business",
-    sectionHeader: "Historical Payment Information",
-    options: YES_NO,
+    sectionHeader: "Payout",
+    options: PAYOUT_METHOD_OPTIONS,
   },
   {
-    name: "processingStatements",
-    type: "file",
-    label:
-      "Please upload 3 or more months of recent processing statements. These statements should include total dollar amount and count of card transactions, refunds, and chargebacks.",
-    placeholder:
-      "Upload your business processing statements, including transaction volumes, chargeback rates, and dispute resolutions",
+    name: "payoutsMonthlyVolume",
+    type: "money-amount",
+    label: "Estimated monthly payout volume across end-user payout products",
+    placeholder: "Estimated monthly payout volume",
     required: true,
-    audience: "business",
-    accept: ".pdf,.png,.jpg,.jpeg,.docx,.csv,.xlsx",
-    maxSizeMb: 5,
-    conditional: { dependsOn: "acceptedPaymentsBefore", value: "yes" },
-  },
-  {
-    name: "currentRunway",
-    type: "select",
-    label: "How many months can your business operate with its current cash balance?",
-    placeholder: "Select your current runway",
-    required: true,
-    audience: "business",
-    options: [
-      { label: "< 6 months", value: "< 6 months" },
-      { label: "6 - 12 months", value: "6 - 12 months" },
-      { label: "13 - 18 months", value: "13 - 18 months" },
-      { label: ">18 months/profitable", value: ">18 months/profitable" },
-    ],
-  },
-  {
-    name: "historicalChargebackRate",
-    type: "select",
-    label: "What is your historical chargeback rate?",
-    placeholder: "Select your historical chargeback rate",
-    required: true,
-    audience: "business",
-    options: [
-      { label: "<0.25%", value: "<0.25%" },
-      { label: "0.25% - 0.5%", value: " 0.25% - 0.5%" },
-      { label: "0.51% - 0.9%", value: "0.51% - 0.9%" },
-      { label: ">0.9%", value: ">0.9%" },
-    ],
-    conditional: { dependsOn: "acceptedPaymentsBefore", value: "yes" },
-  },
-  {
-    name: "averageDollarValueChargeback",
-    type: "textarea",
-    label: "What is the average value (USD) of your historical disputes?",
-    placeholder:
-      "This would be on average the disputed amount for an individual dispute. For example if you have 100 disputes for a total of $10,000 your average dispute amount is $10,000/100 = $100",
-    required: true,
-    audience: "business",
-    conditional: { dependsOn: "acceptedPaymentsBefore", value: "yes" },
-  },
-  {
-    name: "paymentProcessingAgreementTerminated",
-    type: "select",
-    label:
-      "Have the merchant owners or principals ever had a payment processing agreement terminated?",
-    placeholder:
-      "Select if the merchant owners or principals ever had a payment processing agreement terminated",
-    required: true,
-    audience: "business",
-    options: YES_NO,
-    conditional: { dependsOn: "acceptedPaymentsBefore", value: "yes" },
-  },
-  {
-    name: "terminationDate",
-    type: "date",
-    label: "Date of termination",
-    placeholder: "Select the date of termination",
-    required: true,
-    audience: "business",
-    conditional: { dependsOn: "paymentProcessingAgreementTerminated", value: "yes" },
-  },
-  {
-    name: "terminationReason",
-    type: "textarea",
-    label: "Reason for termination",
-    placeholder: "Please describe the reason for termination",
-    required: true,
-    audience: "business",
-    conditional: { dependsOn: "paymentProcessingAgreementTerminated", value: "yes" },
-  },
-  {
-    name: "bankStatements",
-    type: "file",
-    label: "Bank Statements",
-    placeholder:
-      "Please provide 3 or more months of recent Bank Statements. If you have multiple bank accounts, please provide the account(s) that show the majority of your Cash and/or Cash Equivalents Balance. If Bank Statements are not available for your business yet, please provide a Confirmation Letter from your bank.",
-    required: false,
-    audience: "business",
-    sectionHeader: "Financial Documentation",
-    accept: ".pdf,.png,.jpg,.jpeg,.docx,.csv",
-    maxSizeMb: 10,
+    audience: "platform",
   },
 ];
 
-/** Stored alongside a `tel` field but never rendered on its own. */
-export const HIDDEN_FIELD_NAMES = ["businessPhoneCountryCode"] as const;
+/** Stored with the form but never rendered on its own. */
+export const HIDDEN_FIELD_NAMES = [
+  "businessPhoneCountryCode",
+  "whatDoesYourBusinessDo",
+  ...Object.keys(FIXED_FIELDS),
+  ...WEBSITE_URL_COPIES,
+] as const;
 
 export const FIELD_NAMES: readonly string[] = [
   ...FIELD_DEFINITIONS.map((field) => field.name),

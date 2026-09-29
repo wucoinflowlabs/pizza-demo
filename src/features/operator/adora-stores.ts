@@ -1,4 +1,4 @@
-import type { FormValues } from "@/lib/onboarding-form";
+import { businessOverview, type FormValues } from "@/lib/onboarding-form";
 import { customerPrefill, type AdoraCustomer } from "./adora-customers";
 import stores from "./adora-stores.json";
 
@@ -43,13 +43,15 @@ export function shopDemoEmail(customerId: string, storeId: string): string {
 }
 
 export function storePrefill(customer: AdoraCustomer, store: AdoraStore): FormValues {
-  const place = `${store.street}, ${store.city}, ${store.state}`;
   const email = shopDemoEmail(customer.id, store.id);
   return {
     ...customerPrefill(customer),
     businessEmail: email,
     billingEmail: email,
     ...(store.phone ? { businessPhoneNumber: store.phone } : {}),
-    whatDoesYourBusinessDo: `${customer.name} at ${place}. Guests order in the store and through Adora online ordering.`,
+    whatDoesYourBusinessDo: businessOverview({
+      name: customer.name,
+      place: `${store.city}, ${store.state}`,
+    }),
   };
 }

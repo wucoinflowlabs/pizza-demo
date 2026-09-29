@@ -4,9 +4,8 @@ import { CheckIcon, CircleIcon } from "lucide-react";
 import { UnderReviewScreen } from "@/features/application/components/under-review-screen";
 
 const STEPS = [
-  { title: "Account creation", complete: true, current: false },
-  { title: "Business verification", complete: true, current: false },
   { title: "Onboarding details", complete: true, current: false },
+  { title: "Business verification", complete: true, current: false },
   { title: "Submit application", complete: true, current: true },
 ];
 

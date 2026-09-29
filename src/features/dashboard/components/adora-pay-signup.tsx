@@ -1,38 +1,82 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ArrowRightIcon, XIcon } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { AlertCircleIcon, ArrowRightIcon, Loader2Icon, XIcon } from "lucide-react";
 import { OnboardingFields } from "@/components/onboarding-form/onboarding-fields";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
+import { brand } from "@/config/brand";
+import { ApprovedScreen } from "@/features/application/components/approved-screen";
+import { BusinessVerificationStep } from "@/features/application/components/business-verification-step";
+import { StepHeader } from "@/features/application/components/step-header";
+import { SubmitStep } from "@/features/application/components/submit-step";
+import { UnderReviewScreen } from "@/features/application/components/under-review-screen";
+import { SUBMIT_TO_APPROVAL_MS } from "@/features/operator/store-status";
 import {
   FIELD_DEFINITIONS,
+  validateForm,
   withoutKey,
   type FieldErrors,
   type FieldValue,
   type FormValues,
 } from "@/lib/onboarding-form";
-import { startAdoraPayOnboarding } from "../actions";
-import type { AdoraPaySnapshot, PayWebhook } from "../pay-status";
-import { AdoraPayActivity } from "./adora-pay-activity";
+import type { SubmerchantProgress } from "@/lib/payments/verification";
+import {
+  refreshAdoraPayProgress,
+  startAdoraPayOnboarding,
+  submitAdoraPayApplication,
+} from "../actions";
 import { FeatureCarousel } from "./feature-carousel";
 
-export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
-  const [stage, setStage] = useState<"page" | "intro" | "form">("page");
+type Stage = "page" | "intro" | "form" | "kyb" | "submit" | "pending" | "approved";
+
+function stageFor(progress?: SubmerchantProgress): Stage {
+  if (!progress) return "page";
+  if (progress.applicationSubmitted) return "submit";
+  if (!progress.onboardingFormSubmitted) return "form";
+  return "kyb";
+}
+
+function scrollToField(name: string) {
+  document
+    .getElementById(`onboarding-field-${name}`)
+    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+export function AdoraPaySignup({
+  prefill,
+  initialProgress,
+}: {
+  prefill: FormValues;
+  initialProgress?: SubmerchantProgress;
+}) {
+  const [stage, setStage] = useState<Stage>(() => stageFor(initialProgress));
+  const [progress, setProgress] = useState(initialProgress);
   const [values, setValues] = useState(prefill);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string>();
-  const [live, setLive] = useState<{ snapshot: AdoraPaySnapshot; events: PayWebhook[] }>();
+  const [releaseAt, setReleaseAt] = useState<number>();
   const [pending, startSubmit] = useTransition();
   const prefilled = new Set(Object.keys(prefill));
+  const businessName = typeof prefill.dba === "string" ? prefill.dba : undefined;
 
-  if (live) {
-    return (
-      <AdoraPayActivity initialSnapshot={live.snapshot} initialEvents={live.events} animate />
-    );
-  }
+  useEffect(() => {
+    if (stage !== "pending" || releaseAt === undefined) return;
+    const timer = window.setTimeout(() => setStage("approved"), Math.max(0, releaseAt - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [stage, releaseAt]);
 
-  const submit = () => {
+  const submitDetails = () => {
     setMessage(undefined);
+    const clientErrors = validateForm({ values, requireAll: true });
+    if (Object.keys(clientErrors).length) {
+      setErrors(clientErrors);
+      setMessage("Please answer the highlighted questions.");
+      const first = FIELD_DEFINITIONS.find((field) => clientErrors[field.name]);
+      if (first) scrollToField(first.name);
+      return;
+    }
     startSubmit(async () => {
       const result = await startAdoraPayOnboarding(values);
       if (!result.ok) {
@@ -40,8 +84,15 @@ export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
         setMessage(result.message);
         return;
       }
-      setLive({ snapshot: result.snapshot, events: result.events });
+      setProgress(result.progress);
+      setStage("kyb");
     });
+  };
+
+  const holdForApproval = (next: SubmerchantProgress) => {
+    setProgress(next);
+    setReleaseAt(Date.now() + SUBMIT_TO_APPROVAL_MS);
+    setStage("pending");
   };
 
   return (
@@ -82,9 +133,8 @@ export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
               Sign up for Adora Pay
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Turn on card, wallet, and bank payments for{" "}
-              {typeof prefill.dba === "string" ? prefill.dba : "this restaurant"}, inside the POS
-              the shop already runs.
+              Turn on card, wallet, and bank payments for {businessName ?? "this restaurant"}, inside
+              the POS the shop already runs.
             </p>
             <Button type="button" className="mt-5 w-full" size="lg" onClick={() => setStage("form")}>
               Start onboarding
@@ -92,55 +142,97 @@ export function AdoraPaySignup({ prefill }: { prefill: FormValues }) {
           </div>
         </div>
       )}
-      {stage === "form" && (
+      {stage !== "page" && stage !== "intro" && (
         <div className="absolute inset-0 flex items-start justify-center overflow-y-auto bg-black/45 p-4 sm:items-center">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="adora-pay-form-title"
-            className="my-4 flex max-h-[calc(100%-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-background shadow-2xl"
+            className="my-4 flex max-h-[calc(100%-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-background shadow-2xl"
           >
             <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
               <div>
                 <p className="text-sm font-semibold text-shop-accent">Adora Pay</p>
                 <h2 id="adora-pay-form-title" className="font-heading text-xl font-bold text-shop-ink">
-                  Onboarding form
+                  Merchant onboarding
                 </h2>
               </div>
               <button
                 type="button"
                 aria-label="Close onboarding form"
-                onClick={() => setStage("intro")}
+                onClick={() => setStage("page")}
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <XIcon className="size-4" />
               </button>
             </div>
             <div className="flex flex-col gap-4 overflow-y-auto px-5 py-4">
-              <OnboardingFields
-                fields={FIELD_DEFINITIONS}
-                values={values}
-                errors={errors}
-                prefilledBadge="From Adora"
-                isPrefilled={(name) => prefilled.has(name)}
-                onChange={(name: string, value: FieldValue) => {
-                  setValues((current) => ({ ...current, [name]: value }));
-                  setErrors((current) => withoutKey(current, name));
-                }}
-              />
-              {message && <p className="text-sm text-destructive">{message}</p>}
-            </div>
-            <div className="flex justify-end gap-2 border-t px-5 py-4">
-              <Button type="button" variant="outline" onClick={() => setStage("intro")}>
-                Back
-              </Button>
-              <Button type="button" onClick={submit} disabled={pending}>
-                {pending ? "Submitting…" : "Submit onboarding"}
-              </Button>
+              {stage === "form" && (
+                <>
+                  <StepHeader
+                    eyebrow="Step 1 · Onboarding details"
+                    title="Onboarding Form"
+                    description={`Provide information about your business model. ${brand.name} filled in what it already knows — review those answers and complete the rest.`}
+                  />
+                  <OnboardingFields
+                    fields={FIELD_DEFINITIONS}
+                    values={values}
+                    errors={errors}
+                    prefilledBadge="From Adora"
+                    isPrefilled={(name) => prefilled.has(name) && name !== "payinMethods" && name !== "payoutMethods"}
+                    onChange={(name: string, value: FieldValue) => {
+                      setValues((current) => ({ ...current, [name]: value }));
+                      setErrors((current) => withoutKey(current, name));
+                    }}
+                  />
+                  {message && (
+                    <Alert variant="destructive">
+                      <AlertCircleIcon />
+                      <AlertDescription>{message}</AlertDescription>
+                    </Alert>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setStage("intro")}>
+                      Back
+                    </Button>
+                    <Button type="button" onClick={submitDetails} disabled={pending}>
+                      {pending && <Loader2Icon data-icon="inline-start" className="animate-spin" />}
+                      {pending ? "Submitting…" : "Submit"}
+                    </Button>
+                  </div>
+                </>
+              )}
+              {stage === "kyb" && progress && (
+                <BusinessVerificationStep
+                  progress={progress}
+                  refresh={refreshAdoraPayProgress}
+                  onProgress={setProgress}
+                  onComplete={() => setStage("submit")}
+                />
+              )}
+              {stage === "submit" && progress && (
+                <SubmitStep
+                  progress={progress}
+                  onGoToVerification={() => setStage("kyb")}
+                  onGoToDetails={() => setStage("form")}
+                  onBack={() => setStage("kyb")}
+                  verificationComplete={progress.verificationStatus === "approved"}
+                  onSubmitted={holdForApproval}
+                  submitApplication={submitAdoraPayApplication}
+                />
+              )}
+              {stage === "pending" && <UnderReviewScreen />}
+              {stage === "approved" && (
+                <ApprovedScreen
+                  businessName={businessName}
+                  email={typeof values.businessEmail === "string" ? values.businessEmail : undefined}
+                />
+              )}
             </div>
           </div>
         </div>
       )}
+      <Toaster theme="light" position="bottom-right" />
     </div>
   );
 }

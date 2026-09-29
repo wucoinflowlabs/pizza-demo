@@ -4,7 +4,10 @@ import { ADORA_CUSTOMERS } from "@/features/operator/adora-customers";
 import { ADORA_STORES } from "@/features/operator/adora-stores";
 import { OperatorConsole } from "@/features/operator/components/operator-console";
 import { SettlementSweep } from "@/features/operator/components/settlement-sweep";
-import { applicationMatchesStore } from "@/features/operator/store-account";
+import {
+  indexApplicationsByStore,
+  storeApplicationKey,
+} from "@/features/operator/store-account";
 import {
   onboardingCompletedAt,
   storeOnboardingLabel,
@@ -15,10 +18,15 @@ export const metadata: Metadata = { title: "Adora customers" };
 
 export default async function OperatorPage() {
   const listed = await listApplications();
+  const byStore = indexApplicationsByStore(listed, ADORA_STORES);
+  const storeByMerchantId = new Map(
+    ADORA_STORES.flatMap((store) => {
+      const application = byStore.get(storeApplicationKey(store.customerId, store.id));
+      return application ? [[application.merchantId, store] as const] : [];
+    }),
+  );
   const applications = listed.map((application) => {
-    const store = ADORA_STORES.find((item) =>
-      applicationMatchesStore(application.merchantId, item.customerId, item.id),
-    );
+    const store = storeByMerchantId.get(application.merchantId);
     const customer = store
       ? ADORA_CUSTOMERS.find((item) => item.id === store.customerId)
       : undefined;
@@ -36,9 +44,7 @@ export default async function OperatorPage() {
     };
   });
   const stores = ADORA_STORES.map((store) => {
-    const application = listed.find((item) =>
-      applicationMatchesStore(item.merchantId, store.customerId, store.id),
-    );
+    const application = byStore.get(storeApplicationKey(store.customerId, store.id));
     const status = storeOnboardingStatus(application);
     return {
       ...store,

@@ -46,8 +46,8 @@ export function toCreateBody({
       privacyPolicyUrl: websiteUrls[0],
       termsOfServiceUrl: websiteUrls[0],
       returnPolicyUrl: websiteUrls[0],
-      payinMethods: FIXED_FIELDS.payinMethods,
-      payoutMethods: FIXED_FIELDS.payoutMethods,
+      payinMethods: text(values, "payinMethods"),
+      payoutMethods: text(values, "payoutMethods"),
     }).filter(([, value]) => value !== undefined),
   ) as unknown as CreateSubmerchantInput;
 }

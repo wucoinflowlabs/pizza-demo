@@ -41,12 +41,15 @@ export function OwnerVerificationStep({
   onInquiryComplete,
   onRefresh,
   onContinue,
+  embedded = false,
 }: {
   progress: SubmerchantProgress;
   checking: boolean;
   onInquiryComplete: () => void;
   onRefresh: () => void;
   onContinue: () => void;
+  /** Rendered inside business verification, without its own step title. */
+  embedded?: boolean;
 }) {
   const [active, setActive] = useState<OwnerInquiry>();
   const approved = progress.verificationStatus === "approved";
@@ -62,7 +65,11 @@ export function OwnerVerificationStep({
   if (active)
     return (
       <div className="flex flex-col gap-6">
-        {header}
+        {embedded ? (
+          <p className="text-sm text-muted-foreground">Verify {active.name}&apos;s identity.</p>
+        ) : (
+          header
+        )}
         <PersonaInquiry
           key={active.inquiryId}
           inquiryId={active.inquiryId}
@@ -80,7 +87,13 @@ export function OwnerVerificationStep({
 
   return (
     <div className="flex flex-col gap-6">
-      {header}
+      {embedded ? (
+        <p className="text-sm text-muted-foreground">
+          The business is verified. Each owner still needs to confirm their identity.
+        </p>
+      ) : (
+        header
+      )}
       {approved ? (
         <Card>
           <CardContent className="flex items-start gap-3 text-sm">

@@ -125,7 +125,7 @@ export function DetailsStep({
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <StepHeader
-          eyebrow="Step 4 · Onboarding details"
+          eyebrow="Step 1 · Onboarding details"
           title="Onboarding Form"
           description={`Provide information about your business model. ${brand.name} filled in what it already knows — review those answers and complete the rest.`}
         />
@@ -158,7 +158,7 @@ export function DetailsStep({
         errors={errors}
         onChange={onChange}
         disabled={locked}
-        prefilledBadge={`Prefilled by ${brand.name}`}
+        prefilledBadge="Prefilled by Adora"
         isPrefilled={isPrefilled}
         uploadFile={uploadFile}
       />

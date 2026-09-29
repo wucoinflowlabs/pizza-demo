@@ -92,27 +92,45 @@ export function MerchantHome({ profile }: { profile: MerchantHomeProfile }) {
 
             <Link
               href="/dashboard/adora-pay"
-              className="group flex flex-col justify-between gap-6 rounded-2xl bg-shop-panel p-5 ring-1 ring-shop-on-fill/15 transition-colors hover:bg-shop-panel-hover"
+              className="group relative flex flex-col justify-between gap-6 overflow-hidden rounded-2xl bg-white/80 p-5 text-shop-ink shadow-[0_18px_40px_-28px_rgba(13,61,133,0.55)] ring-1 ring-white/40 backdrop-blur-md transition duration-200 hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-[0_22px_44px_-24px_rgba(68,126,236,0.45)]"
             >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-adora-blue to-transparent"
+              />
               <span className="flex items-center justify-between gap-3">
-                <span className="flex size-10 items-center justify-center rounded-xl bg-shop-on-fill/15">
+                <span className="flex size-10 items-center justify-center rounded-xl bg-adora-blue/10 text-adora-blue ring-1 ring-adora-blue/20">
                   <CreditCardIcon className="size-5" />
                 </span>
-                <span className="text-xs font-semibold tracking-[0.16em] text-shop-on-fill/60 uppercase">
-                  Adora Pay
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1",
+                    profile.payConnected
+                      ? "bg-emerald-50 text-emerald-700 ring-emerald-600/15"
+                      : "bg-shop-ink/5 text-shop-ink/70 ring-shop-ink/10",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "size-1.5 rounded-full",
+                      profile.payConnected ? "bg-emerald-500" : "bg-shop-ink/35",
+                    )}
+                  />
+                  {profile.payConnected ? "Live" : "Not enrolled"}
                 </span>
               </span>
-              <span className="flex flex-col gap-2">
+              <span className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-adora-blue">Adora Pay</span>
                 <span className="font-heading text-2xl font-semibold tracking-tight">
                   {profile.payConnected ? "Payments are on" : "Enroll this shop"}
                 </span>
-                <span className="text-sm leading-relaxed text-shop-on-fill/75">
+                <span className="text-sm leading-relaxed text-shop-ink/70">
                   {profile.payConnected
                     ? "Cards, wallets, and bank pay are live for this counter."
                     : "Turn on card, wallet, and bank payments for the tickets this shop already rings up."}
                 </span>
               </span>
-              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-shop-on-fill">
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-adora-blue">
                 {profile.payConnected ? "View Adora Pay" : "Enroll now"}
                 <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
               </span>

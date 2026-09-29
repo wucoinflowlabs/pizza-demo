@@ -1,6 +1,6 @@
 import { ADORA_CUSTOMERS } from "@/features/operator/adora-customers";
 import { ADORA_STORES } from "@/features/operator/adora-stores";
-import type { FormValues } from "@/lib/onboarding-form";
+import { ADORA_PREFILL, type FormValues } from "@/lib/onboarding-form";
 import { LAMONICA_EMAIL, LAMONICA_PREFILL } from "./lamonica";
 
 /** Plus-address from a store login: chris+mmp-kjt3q@… is Mountain Mike's KJT3Q. */
@@ -12,6 +12,7 @@ export function merchantSignupPrefill(email: string): FormValues {
   if (normalized === LAMONICA_EMAIL) return LAMONICA_PREFILL;
 
   const known: FormValues = {
+    ...ADORA_PREFILL,
     businessEmail: normalized,
     billingEmail: normalized,
   };

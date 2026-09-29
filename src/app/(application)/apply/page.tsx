@@ -3,7 +3,7 @@ import { MailIcon } from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { brand } from "@/config/brand";
 import { ApplicationJourney } from "@/features/application/components/application-journey";
-import { sanitizeFormValues } from "@/lib/onboarding-form";
+import { ADORA_PREFILL, sanitizeFormValues } from "@/lib/onboarding-form";
 import { getOnboardingForm } from "@/lib/payments/onboarding";
 import { getSubmerchantProgress } from "@/lib/payments/verification";
 import { getCurrentAccountId } from "@/lib/session";
@@ -39,7 +39,7 @@ export default async function ApplyPage({ searchParams }: PageProps<"/apply">) {
   return (
     <ApplicationJourney
       initialProgress={progress}
-      initialValues={sanitizeFormValues(form)}
+      initialValues={{ ...ADORA_PREFILL, ...sanitizeFormValues(form) }}
     />
   );
 }

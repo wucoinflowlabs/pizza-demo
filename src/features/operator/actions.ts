@@ -1,7 +1,5 @@
 "use server";
 
-import { fakerEN_US as faker } from "@faker-js/faker";
-import { slugify } from "@/lib/account-id";
 import { shopDemoEmail } from "@/features/operator/adora-stores";
 import { storeAccountId } from "@/features/operator/store-account";
 import { createInviteUrl } from "@/lib/invites";
@@ -23,6 +21,7 @@ import { PaymentsError } from "@/lib/payments/errors";
 import { saveOnboardingDraft } from "@/lib/payments/onboarding";
 import {
   createSubmerchant,
+  findSubmerchantIdByEmail,
   getSubmerchant,
   listSubmerchants,
 } from "@/lib/payments/submerchants";
@@ -145,7 +144,7 @@ export async function getInviteUrl(merchantId: string): Promise<string> {
 }
 
 export type CreateApplicationResult =
-  | { ok: true; merchantId: string; inviteUrl: string; warning?: string }
+  | { ok: true; merchantId: string; inviteUrl: string; warning?: string; reused?: boolean }
   | { ok: false; message: string; fieldErrors?: FieldErrors };
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -189,7 +188,8 @@ export async function createApplication({
     }
   }
 
-  let merchantId: string;
+  let merchantId: string | undefined;
+  let reused = false;
   try {
     if (location) {
       const id = storeAccountId(location.customerId, location.storeId);
@@ -199,21 +199,38 @@ export async function createApplication({
       merchantId = await createWithAvailableId({ email: email.trim(), values });
     }
   } catch (err) {
-    const taken = location && err instanceof PaymentsError && err.code === "ACCOUNT_ID_TAKEN";
-    const message = taken
-      ? "This location already has a payments account."
-      : err instanceof PaymentsError
-        ? err.userMessage
-        : "Something went wrong.";
-    return {
-      ok: false,
-      message,
-      fieldErrors:
-        err instanceof PaymentsError && err.code === "EMAIL_TAKEN"
-          ? { email: message }
-          : undefined,
-    };
+    const emailTaken =
+      seededEmail !== undefined &&
+      nextEmail === seededEmail &&
+      err instanceof PaymentsError &&
+      err.code === "EMAIL_TAKEN";
+    if (emailTaken) {
+      try {
+        merchantId = await findSubmerchantIdByEmail(nextEmail);
+        reused = Boolean(merchantId);
+      } catch (lookupErr) {
+        console.error("[operator] existing account lookup failed", lookupErr);
+      }
+    }
+    if (!merchantId) {
+      const taken = location && err instanceof PaymentsError && err.code === "ACCOUNT_ID_TAKEN";
+      const message = taken
+        ? "This location already has a payments account."
+        : err instanceof PaymentsError
+          ? err.userMessage
+          : "Something went wrong.";
+      return {
+        ok: false,
+        message,
+        fieldErrors:
+          err instanceof PaymentsError && err.code === "EMAIL_TAKEN"
+            ? { email: message }
+            : undefined,
+      };
+    }
   }
+
+  if (!merchantId) return { ok: false, message: "Something went wrong." };
 
   const inviteUrl = await createInviteUrl(merchantId);
   const warnings: string[] = [];
@@ -237,51 +254,25 @@ export async function createApplication({
     console.error("[operator] merchant login was not saved", err);
     warnings.push(
       err instanceof MerchantLoginEmailTakenError
-        ? "The account was created, but that email is already used by another login."
-        : "The account was created, but the merchant login couldn't be saved.",
+        ? "That email is already used by another login."
+        : "The merchant login couldn't be saved.",
     );
   }
-  try {
-    await saveOnboardingDraft({ submerchantId: merchantId, fields: toDraftFields(values) });
-  } catch (err) {
-    console.error("[operator] prefill draft failed", err);
-    warnings.push(
-      "Some prefilled answers couldn't be saved. The business will need to fill them in.",
-    );
+  if (!reused) {
+    try {
+      await saveOnboardingDraft({ submerchantId: merchantId, fields: toDraftFields(values) });
+    } catch (err) {
+      console.error("[operator] prefill draft failed", err);
+      warnings.push(
+        "Some prefilled answers couldn't be saved. The business will need to fill them in.",
+      );
+    }
   }
   return {
     ok: true,
     merchantId,
     inviteUrl,
+    reused,
     warning: warnings.length ? warnings.join(" ") : undefined,
-  };
-}
-
-const PIZZA_SUFFIXES = ["Pizzeria", "Pizza Co.", "Brick Oven", "Slice Shop", "Pizza Kitchen"];
-const AREA_CODES = ["312", "415", "646", "737", "206", "617"];
-
-/** Realistic demo data for a pizzeria joining Adora Payments. */
-export async function generateSampleApplication(): Promise<{
-  email: string;
-  values: FormValues;
-}> {
-  const owner = faker.person.lastName();
-  const suffix = faker.helpers.arrayElement(PIZZA_SUFFIXES);
-  const dba = `${owner}'s ${suffix}`;
-  const slug = slugify(dba);
-  const domain = `${slug}.example`;
-  const email = `demo+${faker.string.alphanumeric({ length: 6, casing: "lower" })}@example.com`;
-
-  return {
-    email,
-    values: {
-      dba,
-      businessPhoneCountryCode: "+1",
-      businessPhoneNumber: `(${faker.helpers.arrayElement(AREA_CODES)}) 555-01${faker.number.int({ min: 10, max: 99 })}`,
-      businessEmail: `hello@${domain}`,
-      billingEmail: `hello@${domain}`,
-      whatDoesYourBusinessDo: `${dba} is a neighborhood pizzeria in ${faker.location.city()} serving wood-fired pizza, salads and drinks for dine-in, pickup and delivery. Customers pay online through Adora online ordering and in store.`,
-      websiteUrl: `https://${domain}`,
-    },
   };
 }

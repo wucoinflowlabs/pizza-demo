@@ -1,7 +1,9 @@
 import {
+  businessOverview,
   FIELD_DEFINITIONS,
   FIELD_NAMES,
   FIXED_FIELDS,
+  UI_ONLY_FIELDS,
   WEBSITE_URL_COPIES,
 } from "./definitions";
 import type {
@@ -22,6 +24,10 @@ function conditionMet({
   value: FieldValue;
   rule: ConditionalRule;
 }): boolean {
+  if (rule.compare === "gt") {
+    const numeric = typeof value === "string" ? Number(value) : NaN;
+    return Number.isFinite(numeric) && numeric > Number(rule.value);
+  }
   if (rule.value === true) return hasValue(value);
   if (typeof value !== "string") return false;
   if (value === rule.value) return true;
@@ -113,6 +119,11 @@ function formatError({
   if (field.type === "money-amount" && value && typeof value === "object" && !Array.isArray(value)) {
     if (value.amount < 0) return "Amount can't be negative";
   }
+  if (field.type === "percent" && typeof value === "string") {
+    const percent = Number(value);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100)
+      return "Enter a percentage from 0 to 100";
+  }
   if (field.type === "geo-distribution" && Array.isArray(value)) {
     if (Math.abs(geoTotal(value) - 100) >= 0.01) return "Percentages must sum to 100";
   }
@@ -182,14 +193,43 @@ export function sanitizeFormValues(input: unknown): FormValues {
   return result;
 }
 
-/** Adds the answers Adora hardcodes, with the testing URL and policy links set to the website URL. */
+/** Fills hidden Coinflow answers without overwriting anything the merchant entered. */
 export function withFixedFields(values: FormValues): FormValues {
-  const website = values.websiteUrl;
-  const websiteCopies =
-    typeof website === "string" && website
-      ? Object.fromEntries(WEBSITE_URL_COPIES.map((name) => [name, website]))
-      : {};
-  return { ...values, ...websiteCopies, ...FIXED_FIELDS };
+  const next: FormValues = { ...values };
+  for (const name of UI_ONLY_FIELDS) delete next[name];
+
+  const website = typeof next.websiteUrl === "string" ? next.websiteUrl : undefined;
+  if (website) {
+    for (const name of WEBSITE_URL_COPIES) {
+      if (!hasValue(next[name])) next[name] = website;
+    }
+  }
+
+  for (const [name, value] of Object.entries(FIXED_FIELDS)) {
+    if (name === "historicalChargebackRate" || name === "averageDollarValueChargeback") continue;
+    if (name === "paymentProcessingAgreementTerminated" || name === "processingStatements") continue;
+    if (!hasValue(next[name])) next[name] = value;
+  }
+
+  if (!hasValue(next.whatDoesYourBusinessDo)) {
+    const name = typeof next.dba === "string" && next.dba.trim() ? next.dba.trim() : "This restaurant";
+    next.whatDoesYourBusinessDo = businessOverview({ name, place: "their city" });
+  }
+
+  if (next.acceptedPaymentsBefore === "yes") {
+    if (!hasValue(next.historicalChargebackRate))
+      next.historicalChargebackRate = FIXED_FIELDS.historicalChargebackRate;
+    if (!hasValue(next.averageDollarValueChargeback))
+      next.averageDollarValueChargeback = FIXED_FIELDS.averageDollarValueChargeback;
+    if (!hasValue(next.paymentProcessingAgreementTerminated))
+      next.paymentProcessingAgreementTerminated = FIXED_FIELDS.paymentProcessingAgreementTerminated;
+    if (!hasValue(next.processingStatements))
+      next.processingStatements = FIXED_FIELDS.processingStatements;
+  } else {
+    delete next.processingStatements;
+  }
+
+  return next;
 }
 
 /** Drops empty strings/arrays so drafts don't overwrite stored answers with blanks. */

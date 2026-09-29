@@ -1,22 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { CheckIcon, CircleIcon } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { ASSUME_APPROVED_ON_SUBMIT } from "@/config/onboarding";
 import type { FormValues } from "@/lib/onboarding-form";
 import type { SubmerchantProgress } from "@/lib/payments/verification";
 import { refreshProgress } from "../actions";
-import { AccountStep } from "./account-step";
 import { ApprovedScreen } from "./approved-screen";
 import { BusinessVerificationStep } from "./business-verification-step";
 import { DetailsStep } from "./details-step";
-import { OwnerVerificationStep } from "./owner-verification-step";
 import { SubmitStep } from "./submit-step";
 import { UnderReviewScreen } from "./under-review-screen";
 import { SUBMIT_TO_APPROVAL_MS } from "@/features/operator/store-status";
 
-type StepId = "account" | "business" | "owners" | "details" | "submit";
+type StepId = "details" | "business" | "submit";
 
 type Step = { id: StepId; title: string; complete: boolean; hidden: boolean };
 
@@ -27,9 +25,6 @@ function isApproved(progress: SubmerchantProgress): boolean {
   if (!progress.onboardingFormSubmitted) return false;
   return progress.approved || (progress.applicationSubmitted && ASSUME_APPROVED_ON_SUBMIT);
 }
-
-const POLL_INTERVAL_MS = 2000;
-const POLL_ATTEMPTS = 15;
 
 function holdKey(merchantId: string) {
   return `za-approval-hold:${merchantId}`;
@@ -67,24 +62,10 @@ function clearHold(merchantId: string) {
   }
 }
 
-// Mirrors the provider's onboarding step rules (owner verification only
-// appears once the business itself is verified).
+// Details first, then Persona business and owner verification, then submit.
 function buildSteps(progress: SubmerchantProgress): Step[] {
-  const status = progress.verificationStatus;
+  const verified = progress.verificationStatus === "approved";
   return [
-    { id: "account", title: "Account creation", complete: true, hidden: false },
-    {
-      id: "business",
-      title: "Business verification",
-      complete: status === "approved" || status === "partialApproval",
-      hidden: false,
-    },
-    {
-      id: "owners",
-      title: "Business owner verification",
-      complete: status === "approved",
-      hidden: status !== "partialApproval" && status !== "approved",
-    },
     {
       id: "details",
       title: "Onboarding details",
@@ -92,28 +73,25 @@ function buildSteps(progress: SubmerchantProgress): Step[] {
       hidden: false,
     },
     {
+      id: "business",
+      title: "Business verification",
+      complete: verified || progress.applicationSubmitted,
+      hidden: false,
+    },
+    {
       id: "submit",
       title: "Submit application",
-      complete: progress.applicationSubmitted || isApproved(progress),
+      complete: progress.applicationSubmitted,
       hidden: false,
     },
   ];
 }
 
-function firstIncompleteStep(progress: SubmerchantProgress): StepId {
-  const steps = buildSteps(progress).filter((step) => !step.hidden);
-  return steps.find((step) => !step.complete)?.id ?? "submit";
-}
-
-// A brand-new application opens on the welcome step; returning visits resume where they left off.
 function initialStep(progress: SubmerchantProgress): StepId {
-  if (progress.applicationSubmitted || isApproved(progress)) return "submit";
-  if (progress.verificationStatus === "pending" && !progress.onboardingFormSubmitted)
-    return "account";
-  return firstIncompleteStep(progress);
+  if (progress.applicationSubmitted) return "submit";
+  if (!progress.onboardingFormSubmitted) return "details";
+  return "business";
 }
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function ApplicationJourney({
   initialProgress,
@@ -124,7 +102,6 @@ export function ApplicationJourney({
 }) {
   const [progress, setProgress] = useState(initialProgress);
   const [stepId, setStepId] = useState<StepId>(() => initialStep(initialProgress));
-  const [checking, setChecking] = useState(false);
   const [releaseApprovalAt, setReleaseApprovalAt] = useState<number>();
   const steps = useMemo(() => buildSteps(progress), [progress]);
   const visibleSteps = steps.filter((step) => !step.hidden);
@@ -155,66 +132,18 @@ export function ApplicationJourney({
     window.scrollTo({ top: 0 });
   };
 
-  const refresh = useCallback(async () => {
-    const result = await refreshProgress();
-    if (result.ok) setProgress(result.progress);
-    return result.ok ? result.progress : undefined;
-  }, []);
-
-  // Verification results land a few seconds after the Persona flow closes.
-  const waitForVerificationChange = useCallback(async () => {
-    const before = progress.verificationStatus;
-    const ownersBefore = progress.ownerInquiries.length;
-    setChecking(true);
-    try {
-      for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
-        const next = await refresh();
-        if (
-          next &&
-          (next.verificationStatus !== before || next.ownerInquiries.length !== ownersBefore)
-        )
-          return next;
-        await sleep(POLL_INTERVAL_MS);
-      }
-    } finally {
-      setChecking(false);
-    }
-  }, [progress.verificationStatus, progress.ownerInquiries.length, refresh]);
-
-  const afterBusinessInquiry = async () => {
-    const next = await waitForVerificationChange();
-    if (next?.verificationStatus === "partialApproval") goTo("owners");
-    else if (next?.verificationStatus === "approved") goTo("details");
-  };
-
   const businessName = typeof initialValues.dba === "string" ? initialValues.dba : undefined;
   const loginEmail =
     progress.accountEmail ??
     (typeof initialValues.businessEmail === "string" ? initialValues.businessEmail : undefined);
 
   const content: Record<StepId, React.ReactNode> = {
-    account: (
-      <AccountStep
-        progress={progress}
-        businessName={businessName}
-        onContinue={() => goTo(firstIncompleteStep(progress))}
-      />
-    ),
     business: (
       <BusinessVerificationStep
         progress={progress}
-        checking={checking}
-        onInquiryComplete={afterBusinessInquiry}
-        onContinue={() => goTo(progress.verificationStatus === "approved" ? "details" : "owners")}
-      />
-    ),
-    owners: (
-      <OwnerVerificationStep
-        progress={progress}
-        checking={checking}
-        onInquiryComplete={waitForVerificationChange}
-        onRefresh={waitForVerificationChange}
-        onContinue={() => goTo("details")}
+        refresh={refreshProgress}
+        onProgress={setProgress}
+        onComplete={() => goTo("submit")}
       />
     ),
     details: (
@@ -224,23 +153,22 @@ export function ApplicationJourney({
         locked={progress.applicationSubmitted}
         onSubmitted={(next) => {
           setProgress(next);
-          if (isApproved(next)) beginReview(next.merchantId);
-          goTo("submit");
+          goTo("business");
         }}
       />
     ),
-    submit: isApproved(progress) && !approvalHeld ? (
-      <ApprovedScreen businessName={businessName} email={loginEmail} />
-    ) : progress.applicationSubmitted || approvalHeld ? (
-      <UnderReviewScreen />
-    ) : (
+    submit:
+      progress.applicationSubmitted && isApproved(progress) && !approvalHeld ? (
+        <ApprovedScreen businessName={businessName} email={loginEmail} />
+      ) : progress.applicationSubmitted || approvalHeld ? (
+        <UnderReviewScreen />
+      ) : (
       <SubmitStep
         progress={progress}
-        onGoToVerification={() =>
-          goTo(progress.verificationStatus === "partialApproval" ? "owners" : "business")
-        }
+        onGoToVerification={() => goTo("business")}
         onGoToDetails={() => goTo("details")}
-        onBack={() => goTo("details")}
+        onBack={() => goTo("business")}
+        verificationComplete={progress.verificationStatus === "approved"}
         onSubmitted={(next) => {
           setProgress(next);
           beginReview(next.merchantId);

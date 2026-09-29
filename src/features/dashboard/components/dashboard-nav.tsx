@@ -70,10 +70,10 @@ function NavItem({
       <span
         className={cn(
           "flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-          active
-            ? "bg-shop-fill text-shop-on-fill"
-            : accent
-              ? "bg-shop-accent/12 text-shop-accent ring-1 ring-shop-accent/20"
+          accent
+            ? "bg-adora-blue/12 text-adora-blue ring-1 ring-adora-blue/25"
+            : active
+              ? "bg-shop-fill text-shop-on-fill"
               : "bg-white text-shop-ink/55 ring-1 ring-shop-ink/10 group-hover:text-shop-ink",
         )}
       >

@@ -38,11 +38,12 @@ type MerchantV2Response = {
 };
 
 export type EmbeddedInquiry = {
-  inquiryId: string;
+  inquiryId?: string;
   sessionToken?: string;
+  link?: string;
 };
 
-export type OwnerInquiry = EmbeddedInquiry & { name: string; link: string };
+export type OwnerInquiry = EmbeddedInquiry & { name: string; link: string; inquiryId: string };
 
 /** Everything the business journey needs — and nothing else — from the merchant record. */
 export type SubmerchantProgress = {
@@ -72,9 +73,16 @@ export async function getSubmerchantProgress(
     });
 
   const reference = merchant.verification?.reference;
+  const merchantLink = verificationLinks?.merchantLink;
+  // Sandbox often reports the case approved before the merchant has opened
+  // Persona. Keep the inquiry whenever Coinflow still has an id or link.
   const businessInquiry =
-    verificationLinks?.merchantLink && reference
-      ? { inquiryId: reference, sessionToken: merchant.verification?.sessionToken }
+    reference || merchantLink
+      ? {
+          inquiryId: reference,
+          sessionToken: merchant.verification?.sessionToken,
+          link: merchantLink,
+        }
       : undefined;
 
   return {

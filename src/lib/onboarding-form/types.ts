@@ -9,14 +9,17 @@ export type FieldType =
   | "multiselect"
   | "file"
   | "money-amount"
-  | "geo-distribution";
+  | "geo-distribution"
+  | "percent";
 
 export type SelectOption = { label: string; value: string };
 
 export type ConditionalRule = {
   dependsOn: string;
   /** `true` means "has any value"; a string matches exactly or inside a comma-joined multiselect. */
-  value: string | boolean;
+  value: string | boolean | number;
+  /** Default "eq". "gt" shows the field when the dependency is a number greater than `value`. */
+  compare?: "eq" | "gt";
 };
 
 /** Who is expected to answer: Adora (prefilled for the business) or the business itself. */

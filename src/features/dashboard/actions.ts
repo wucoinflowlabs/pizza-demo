@@ -3,25 +3,29 @@
 import { redirect } from "next/navigation";
 import {
   FIELD_DEFINITIONS,
+  FIELD_NAMES,
   sanitizeFormValues,
   validateForm,
+  withFixedFields,
   withoutEmptyValues,
   type FieldErrors,
   type FormValues,
 } from "@/lib/onboarding-form";
 import { saveMerchantLogin, setLoginSubmerchantId, verifyMerchantPassword } from "@/lib/merchant-logins";
 import { PaymentsError } from "@/lib/payments/errors";
-import { saveOnboardingDraft } from "@/lib/payments/onboarding";
+import { saveOnboardingDraft, submitApplicationForReview, submitOnboardingForm } from "@/lib/payments/onboarding";
 import { findSubmerchantIdByEmail } from "@/lib/payments/submerchants";
 import { createWithAvailableId, toDraftFields } from "@/lib/submerchant-account";
-import { getSubmerchantProgress } from "@/lib/payments/verification";
+import { getSubmerchantProgress, type SubmerchantProgress } from "@/lib/payments/verification";
 import {
   endMerchantSession,
+  getCurrentAccountId,
   getCurrentMerchantEmail,
+  setCurrentAccountId,
   startMerchantSession,
 } from "@/lib/session";
-import type { AdoraPaySnapshot, PayWebhook } from "./pay-status";
-import { eventsFromSnapshot, snapshotFromProgress } from "./pay-status";
+import type { AdoraPaySnapshot } from "./pay-status";
+import { snapshotFromProgress } from "./pay-status";
 
 export async function signInMerchant(
   _previous: { error?: string } | undefined,
@@ -55,6 +59,19 @@ async function requireMerchantEmail() {
   return email;
 }
 
+/** Binds the logged-in merchant to the account cookie. Cookie writes are only allowed in a Server Action. */
+export async function rememberMerchantAccount() {
+  try {
+    const email = await getCurrentMerchantEmail();
+    if (!email) return;
+    const merchantId = await findSubmerchantIdByEmail(email);
+    if (!merchantId || (await getCurrentAccountId()) === merchantId) return;
+    await setCurrentAccountId(merchantId);
+  } catch (err) {
+    console.error("[dashboard] could not bind the merchant account", err);
+  }
+}
+
 export async function loadAdoraPaySnapshot(): Promise<AdoraPaySnapshot | undefined> {
   const email = await requireMerchantEmail();
   const merchantId = await findSubmerchantIdByEmail(email);
@@ -67,19 +84,38 @@ function text(values: FormValues, name: string) {
   return typeof values[name] === "string" ? values[name] : undefined;
 }
 
+function fieldErrorsFrom(details: unknown): FieldErrors {
+  const known = new Set(FIELD_NAMES);
+  const errors: FieldErrors = {};
+  if (Array.isArray(details)) {
+    for (const issue of details as { path?: unknown[]; message?: string }[]) {
+      const name = issue?.path?.[0];
+      if (typeof name === "string" && known.has(name))
+        errors[name] = issue.message ?? "This field is invalid";
+    }
+  } else if (details && typeof details === "object") {
+    for (const [name, value] of Object.entries(details as Record<string, unknown>)) {
+      if (!known.has(name)) continue;
+      const message = Array.isArray(value) ? value[0] : value;
+      errors[name] = typeof message === "string" ? message : "This field is invalid";
+    }
+  }
+  return errors;
+}
+
+async function merchantProgress(): Promise<SubmerchantProgress | undefined> {
+  const email = await requireMerchantEmail();
+  const merchantId = await findSubmerchantIdByEmail(email);
+  if (!merchantId) return undefined;
+  return getSubmerchantProgress(merchantId);
+}
+
 export type StartOnboardingResult =
-  | { ok: true; snapshot: AdoraPaySnapshot; events: PayWebhook[] }
+  | { ok: true; progress: SubmerchantProgress }
   | { ok: false; message: string; fieldErrors?: FieldErrors };
 
 export async function startAdoraPayOnboarding(rawValues: unknown): Promise<StartOnboardingResult> {
   const email = await requireMerchantEmail();
-  const existing = await findSubmerchantIdByEmail(email);
-  if (existing) {
-    const progress = await getSubmerchantProgress(existing);
-    const snapshot = snapshotFromProgress(progress);
-    return { ok: true, snapshot, events: eventsFromSnapshot(snapshot) };
-  }
-
   const values = withoutEmptyValues(sanitizeFormValues(rawValues));
   const fieldErrors = validateForm({
     values,
@@ -90,53 +126,87 @@ export async function startAdoraPayOnboarding(rawValues: unknown): Promise<Start
     return { ok: false, message: "Please fix the highlighted fields.", fieldErrors };
   }
 
-  const businessName = text(values, "dba");
-  let merchantId: string;
+  let merchantId = await findSubmerchantIdByEmail(email);
+  if (!merchantId) {
+    const businessName = text(values, "dba");
+    try {
+      merchantId = await createWithAvailableId({ email, values });
+    } catch (err) {
+      const message = err instanceof PaymentsError ? err.userMessage : "Something went wrong. Please try again.";
+      return { ok: false, message };
+    }
+
+    try {
+      const linked = await setLoginSubmerchantId(email, merchantId);
+      if (!linked) {
+        await saveMerchantLogin({
+          cfSubmerchantId: merchantId,
+          email,
+          name: businessName,
+        });
+      }
+    } catch (err) {
+      console.error("[dashboard] merchant login was not linked to the new account", err);
+    }
+  }
+
+  const current = await getSubmerchantProgress(merchantId);
+  if (!current.onboardingFormSubmitted) {
+    try {
+      await saveOnboardingDraft({ submerchantId: merchantId, fields: toDraftFields(values) });
+      await submitOnboardingForm({ submerchantId: merchantId, fields: withFixedFields(values) });
+    } catch (err) {
+      if (!(err instanceof PaymentsError) || err.code !== "ALREADY_SUBMITTED") {
+        if (err instanceof PaymentsError && err.code === "INVALID_FIELDS") {
+          const serverErrors = fieldErrorsFrom(err.details);
+          return {
+            ok: false,
+            message: Object.keys(serverErrors).length
+              ? "Please answer the highlighted questions."
+              : err.userMessage,
+            fieldErrors: serverErrors,
+          };
+        }
+        const message = err instanceof PaymentsError ? err.userMessage : "Something went wrong. Please try again.";
+        return { ok: false, message };
+      }
+    }
+  }
+
+  await setCurrentAccountId(merchantId);
+  return { ok: true, progress: await getSubmerchantProgress(merchantId) };
+}
+
+export async function refreshAdoraPayProgress(): Promise<
+  { ok: true; progress: SubmerchantProgress } | { ok: false; message: string }
+> {
   try {
-    merchantId = await createWithAvailableId({ email, values });
+    const progress = await merchantProgress();
+    if (!progress) return { ok: false, message: "We couldn't find your application. Let's start again." };
+    return { ok: true, progress };
   } catch (err) {
     const message = err instanceof PaymentsError ? err.userMessage : "Something went wrong. Please try again.";
     return { ok: false, message };
   }
+}
 
-  const events: PayWebhook[] = [
-    {
-      id: `created:${merchantId}`,
-      type: "submerchant.created",
-      summary: `${businessName ?? merchantId} was created under Adora.`,
-      at: new Date().toISOString(),
-    },
-  ];
-
-  try {
-    await saveOnboardingDraft({ submerchantId: merchantId, fields: toDraftFields(values) });
-    events.push({
-      id: `draft:${merchantId}`,
-      type: "onboarding.draft.saved",
-      summary: `Onboarding details for ${businessName ?? merchantId} were saved.`,
-      at: new Date().toISOString(),
-    });
-  } catch (err) {
-    console.error("[dashboard] onboarding draft was not saved", err);
-  }
+export async function submitAdoraPayApplication(): Promise<
+  { ok: true; progress: SubmerchantProgress } | { ok: false; message: string }
+> {
+  const email = await requireMerchantEmail();
+  const merchantId = await findSubmerchantIdByEmail(email);
+  if (!merchantId) return { ok: false, message: "We couldn't find your application. Let's start again." };
 
   try {
-    const linked = await setLoginSubmerchantId(email, merchantId);
-    if (!linked) {
-      await saveMerchantLogin({
-        cfSubmerchantId: merchantId,
-        email,
-        name: businessName,
-      });
-    }
+    const before = await getSubmerchantProgress(merchantId);
+    if (before.verificationStatus !== "approved" || !before.onboardingFormSubmitted)
+      return { ok: false, message: "Finish the outstanding tasks before submitting." };
+    if (!before.applicationSubmitted) await submitApplicationForReview(merchantId);
+    return { ok: true, progress: await getSubmerchantProgress(merchantId) };
   } catch (err) {
-    console.error("[dashboard] merchant login was not linked to the new account", err);
+    if (err instanceof PaymentsError && err.code === "ALREADY_SUBMITTED")
+      return { ok: true, progress: await getSubmerchantProgress(merchantId) };
+    const message = err instanceof PaymentsError ? err.userMessage : "Something went wrong. Please try again.";
+    return { ok: false, message };
   }
-
-  const progress = await getSubmerchantProgress(merchantId);
-  const snapshot = snapshotFromProgress(progress, businessName);
-  const verification = eventsFromSnapshot(snapshot).find((event) => event.type === "verification.updated");
-  if (verification && !events.some((event) => event.id === verification.id)) events.push(verification);
-
-  return { ok: true, snapshot, events };
 }

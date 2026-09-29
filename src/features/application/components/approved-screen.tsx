@@ -129,7 +129,7 @@ export function ApprovedScreen({
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader className="gap-3">
-          <BadgeCheckIcon className="size-10 text-primary" />
+          <BadgeCheckIcon className="size-10 text-emerald-600" />
           <CardTitle className="font-heading text-2xl">You&apos;re approved!</CardTitle>
           <p className="text-muted-foreground">
             Our compliance team reviewed your application

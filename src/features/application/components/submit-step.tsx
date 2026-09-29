@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { SubmerchantProgress } from "@/lib/payments/verification";
-import { submitApplication } from "../actions";
+import { submitApplication as submitApplicationAction } from "../actions";
 import { StepHeader } from "./step-header";
 
 type Task = { id: string; title: string; description: string; onFix: () => void };
@@ -17,18 +17,23 @@ export function SubmitStep({
   onGoToDetails,
   onBack,
   onSubmitted,
+  verificationComplete = false,
+  submitApplication = submitApplicationAction,
 }: {
   progress: SubmerchantProgress;
   onGoToVerification: () => void;
   onGoToDetails: () => void;
   onBack: () => void;
   onSubmitted: (progress: SubmerchantProgress) => void;
+  /** The merchant clicked Verify business on the previous step. */
+  verificationComplete?: boolean;
+  submitApplication?: () => Promise<{ ok: true; progress: SubmerchantProgress } | { ok: false; message: string }>;
 }) {
   const [error, setError] = useState<string>();
   const [submitting, startSubmit] = useTransition();
   // Same readiness rules the provider enforces before an application can be submitted.
   const tasks: Task[] = [];
-  if (progress.verificationStatus !== "approved")
+  if (progress.verificationStatus !== "approved" && !verificationComplete)
     tasks.push({
       id: "verification",
       title: "Finish business & owner verification",
@@ -47,8 +52,8 @@ export function SubmitStep({
   return (
     <div className="flex flex-col gap-6">
       <StepHeader
-        eyebrow="Step 5 · Submit application"
-        title="Review & submit"
+        eyebrow="Step 3 · Submit application"
+        title="Submit application"
         description={
           ready
             ? "A quick check before our compliance team reviews. Everything looks complete — submit whenever you're ready."

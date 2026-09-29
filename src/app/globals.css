@@ -76,8 +76,8 @@
   --shop-surface: #f7f3ee;
   --shop-on-fill: #ffffff;
   --shop-glow: var(--shop-accent);
-  --shop-panel: color-mix(in srgb, var(--shop-on-fill) 10%, transparent);
-  --shop-panel-hover: color-mix(in srgb, var(--shop-on-fill) 15%, transparent);
+  --shop-panel: #ffffff;
+  --shop-panel-hover: #ffffff;
 }
 
 @layer base {

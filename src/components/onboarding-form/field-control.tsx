@@ -96,6 +96,31 @@ function MultiselectControl({ field, values, onChange, invalid, disabled }: Cont
   );
 }
 
+function PercentControl({ field, values, onChange, invalid, disabled }: ControlProps) {
+  const value = values[field.name];
+  return (
+    <div className="relative w-36">
+      <Input
+        id={inputId(field.name)}
+        type="number"
+        inputMode="decimal"
+        min={0}
+        max={100}
+        step="1"
+        className="pr-7"
+        placeholder={field.placeholder}
+        value={typeof value === "string" ? value : ""}
+        disabled={disabled}
+        aria-invalid={invalid}
+        onChange={(event) => onChange(field.name, event.target.value || undefined)}
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-sm text-muted-foreground">
+        %
+      </span>
+    </div>
+  );
+}
+
 function MoneyControl({ field, values, onChange, invalid, disabled }: ControlProps) {
   const value = values[field.name];
   const amount = value && typeof value === "object" && !Array.isArray(value) ? value.amount : undefined;
@@ -395,6 +420,8 @@ export function FieldControl(props: ControlProps) {
       return <MultiselectControl {...props} />;
     case "money-amount":
       return <MoneyControl {...props} />;
+    case "percent":
+      return <PercentControl {...props} />;
     case "geo-distribution":
       return <GeoDistributionControl {...props} />;
     case "file":

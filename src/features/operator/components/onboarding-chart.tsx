@@ -22,6 +22,10 @@ function stageOf(status: StoreOnboardingStatus): StageId {
   return "account";
 }
 
+function coord(value: number) {
+  return value.toFixed(4);
+}
+
 function point(angle: number, radius: number) {
   const radians = ((angle - 90) * Math.PI) / 180;
   return {
@@ -38,7 +42,7 @@ function slicePath(start: number, end: number) {
   const from = point(start, 14);
   const to = point(end, 14);
   const large = sweep > 180 ? 1 : 0;
-  return `M 16 16 L ${from.x} ${from.y} A 14 14 0 ${large} 1 ${to.x} ${to.y} Z`;
+  return `M 16 16 L ${coord(from.x)} ${coord(from.y)} A 14 14 0 ${large} 1 ${coord(to.x)} ${coord(to.y)} Z`;
 }
 
 export function OnboardingChart({

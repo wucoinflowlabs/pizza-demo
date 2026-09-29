@@ -1,4 +1,4 @@
-import type { FormValues } from "@/lib/onboarding-form";
+import { ADORA_PREFILL, businessOverview, type FormValues } from "@/lib/onboarding-form";
 
 /** An existing Adora POS customer. Static list: these aren't payments accounts until onboarded. */
 export type AdoraCustomer = {
@@ -97,12 +97,13 @@ export function findAdoraCustomer(id: string | string[] | undefined) {
 export function customerPrefill(customer: AdoraCustomer): FormValues {
   const place = `${customer.location.city}, ${customer.location.state}`;
   return {
+    ...ADORA_PREFILL,
     dba: customer.name,
     businessPhoneCountryCode: "+1",
     ...(customer.phone ? { businessPhoneNumber: customer.phone } : {}),
     businessEmail: DEMO_EMAIL,
     billingEmail: DEMO_EMAIL,
-    whatDoesYourBusinessDo: `${customer.name}, based in ${place}, runs on Adora. Guests order in the store and through Adora online ordering.`,
+    whatDoesYourBusinessDo: businessOverview({ name: customer.name, place }),
     ...(customer.websiteUrl ? { websiteUrl: customer.websiteUrl } : {}),
   };
 }
