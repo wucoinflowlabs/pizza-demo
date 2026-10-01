@@ -16,12 +16,15 @@ export async function paymentsRequest<T>({
   path,
   body,
   asSubmerchant,
+  headers: extraHeaders,
 }: {
   method: HttpMethod;
   path: string;
   body?: unknown;
   /** Acts as this sub-merchant using the parent's key. */
   asSubmerchant?: string;
+  /** Extra request headers. Authorization stays the parent key. */
+  headers?: HeadersInit;
 }): Promise<T> {
   const { PAYMENTS_API_BASE_URL, PAYMENTS_API_KEY } = getPaymentsEnv();
   const startedAt = Date.now();
@@ -44,12 +47,13 @@ export async function paymentsRequest<T>({
     response = await fetch(`${PAYMENTS_API_BASE_URL}${path}`, {
       method,
       headers: {
-        Authorization: PAYMENTS_API_KEY,
         accept: "application/json",
         "content-type": "application/json",
+        ...Object.fromEntries(new Headers(extraHeaders).entries()),
         ...(asSubmerchant
           ? { "x-coinflow-submerchant-id": asSubmerchant }
           : {}),
+        Authorization: PAYMENTS_API_KEY,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",

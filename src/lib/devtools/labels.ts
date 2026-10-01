@@ -14,6 +14,7 @@ const CALL_LABELS: { method: string; pattern: RegExp; label: string }[] = [
   { method: "PUT", pattern: /^\/merchant\/payments\/[^/?]+\/refund$/, label: "Refund payment" },
   { method: "POST", pattern: /^\/merchant\/settlement-address$/, label: "Set settlement address" },
   { method: "POST", pattern: /^\/merchant\/files\/upload-url$/, label: "Request document upload URL" },
+  { method: "GET", pattern: /^\/auth\/session-key$/, label: "Create checkout session" },
 ];
 
 /** A readable step name for a payments API call, for the activity panel. */
