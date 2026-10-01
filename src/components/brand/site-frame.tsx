@@ -13,11 +13,11 @@ export function SiteFrame({
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const dashboard = pathname.startsWith("/dashboard");
+  const bare = pathname.startsWith("/dashboard") || pathname.startsWith("/lamonica");
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      {dashboard ? (
+      {bare ? (
         children
       ) : (
         <>

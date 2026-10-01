@@ -33,7 +33,11 @@ type Stage = "page" | "intro" | "form" | "kyb" | "submit" | "pending" | "approve
 
 function stageFor(progress?: SubmerchantProgress): Stage {
   if (!progress) return "page";
-  if (progress.applicationSubmitted) return "submit";
+  if (
+    progress.applicationSubmitted ||
+    (progress.onboardingFormSubmitted && progress.approved)
+  )
+    return "submit";
   if (!progress.onboardingFormSubmitted) return "form";
   return "kyb";
 }

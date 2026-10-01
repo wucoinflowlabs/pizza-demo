@@ -41,7 +41,13 @@ export default async function AdoraPayPage() {
     <PaymentsChart error={payments.message} />
   );
 
-  if (!progress.applicationSubmitted) {
+  // Unblocked accounts that already submitted the form finished before sandbox
+  // KYB existed. Show payments instead of opening verification.
+  const settled =
+    progress.applicationSubmitted ||
+    (progress.onboardingFormSubmitted && progress.approved);
+
+  if (!settled) {
     return (
       <>
         {bindAccount}

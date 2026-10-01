@@ -88,7 +88,9 @@ function buildSteps(progress: SubmerchantProgress): Step[] {
 }
 
 function initialStep(progress: SubmerchantProgress): StepId {
-  if (progress.applicationSubmitted) return "submit";
+  // Accounts that finished before sandbox KYB are already unblocked. Resume
+  // them on submit instead of opening verification.
+  if (progress.applicationSubmitted || isApproved(progress)) return "submit";
   if (!progress.onboardingFormSubmitted) return "details";
   return "business";
 }
