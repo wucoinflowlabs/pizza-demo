@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AdoraPayActivity } from "@/features/dashboard/components/adora-pay-activity";
 import { AdoraPaySignup } from "@/features/dashboard/components/adora-pay-signup";
+import { PaymentsChart } from "@/features/dashboard/components/payments-chart";
 import { RememberMerchantAccount } from "@/features/dashboard/components/remember-merchant-account";
 import { LAMONICA_EMAIL, LAMONICA_PREFILL } from "@/features/dashboard/lamonica";
+import { loadPaymentsSeries } from "@/features/dashboard/load-payments-series";
 import { eventsFromSnapshot, snapshotFromProgress } from "@/features/dashboard/pay-status";
 import { merchantSignupPrefill } from "@/features/dashboard/signup-prefill";
 import { getMerchantLogin } from "@/lib/merchant-logins";
@@ -26,12 +28,18 @@ export default async function AdoraPayPage() {
     return <AdoraPaySignup prefill={merchantSignupPrefill(login.email)} />;
   }
 
-  const [progress, form, currentAccountId] = await Promise.all([
+  const [progress, form, currentAccountId, payments] = await Promise.all([
     getSubmerchantProgress(submerchantId),
     getOnboardingForm(submerchantId),
     getCurrentAccountId(),
+    loadPaymentsSeries({ submerchantId, loginId: login.id }),
   ]);
   const bindAccount = currentAccountId === submerchantId ? null : <RememberMerchantAccount />;
+  const paymentsChart = payments.ok ? (
+    <PaymentsChart series={payments.series} />
+  ) : (
+    <PaymentsChart error={payments.message} />
+  );
 
   if (!progress.applicationSubmitted) {
     return (
@@ -40,6 +48,7 @@ export default async function AdoraPayPage() {
         <AdoraPaySignup
           prefill={{ ...merchantSignupPrefill(login.email), ...sanitizeFormValues(form) }}
           initialProgress={progress}
+          backdrop={paymentsChart}
         />
       </>
     );
@@ -53,6 +62,7 @@ export default async function AdoraPayPage() {
   return (
     <>
       {bindAccount}
+      <div className="mx-auto w-full max-w-5xl px-4 pt-8">{paymentsChart}</div>
       <AdoraPayActivity
         initialSnapshot={snapshot}
         initialEvents={eventsFromSnapshot(snapshot)}

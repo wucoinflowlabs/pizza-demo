@@ -12,6 +12,7 @@ import {
   LogOutIcon,
   MenuIcon,
   MonitorIcon,
+  ReceiptTextIcon,
   TruckIcon,
   XIcon,
   type LucideIcon,
@@ -104,6 +105,23 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         active={pathname === "/dashboard"}
         onNavigate={onNavigate}
       />
+      <SectionLabel>Payments</SectionLabel>
+      <NavItem
+        href="/dashboard/adora-pay"
+        label="Analytics"
+        icon={CreditCardIcon}
+        active={pathname === "/dashboard/adora-pay"}
+        onNavigate={onNavigate}
+        accent
+      />
+      <NavItem
+        href="/dashboard/adora-pay/payments"
+        label="Payments"
+        icon={ReceiptTextIcon}
+        active={pathname === "/dashboard/adora-pay/payments"}
+        onNavigate={onNavigate}
+        accent
+      />
       <SectionLabel>Products</SectionLabel>
       <ul className="flex flex-col gap-0.5">
         {MERCHANT_PRODUCTS.map((product) => {
@@ -121,15 +139,6 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
       </ul>
-      <SectionLabel>Payments</SectionLabel>
-      <NavItem
-        href="/dashboard/adora-pay"
-        label="Adora Pay"
-        icon={CreditCardIcon}
-        active={pathname === "/dashboard/adora-pay"}
-        onNavigate={onNavigate}
-        accent
-      />
     </nav>
   );
 }

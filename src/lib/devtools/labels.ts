@@ -8,6 +8,7 @@ const CALL_LABELS: { method: string; pattern: RegExp; label: string }[] = [
   { method: "POST", pattern: /^\/merchant\/onboarding\/submit$/, label: "Submit onboarding form" },
   { method: "POST", pattern: /^\/merchant\/onboarding\/review$/, label: "Submit for compliance review" },
   { method: "GET", pattern: /^\/merchant\/v2$/, label: "Check verification status" },
+  { method: "GET", pattern: /^\/merchant\/payments(\?|$)/, label: "List payments" },
   { method: "POST", pattern: /^\/merchant\/settlement-address$/, label: "Set settlement address" },
   { method: "POST", pattern: /^\/merchant\/files\/upload-url$/, label: "Request document upload URL" },
 ];

@@ -19,6 +19,7 @@ Every Coinflow API call the app makes to onboard a merchant, in the order it hap
 | 7 | `POST` | `/merchant/files/upload-url` | ✓ | Get a presigned URL for a document upload |
 | 8 | `POST` | `/merchant/onboarding/submit` | ✓ | Submit the complete onboarding form |
 | 9 | `POST` | `/merchant/onboarding/review` | ✓ | Submit the application for compliance review |
+| 10 | `GET` | `/merchant/payments?since=&until=&status=&page=&limit=` | ✓ | List payments for the merchant dashboard chart |
 
 ## Main flow: operator invite, then `/apply`
 
@@ -43,3 +44,9 @@ Code: `src/app/(application)/apply/page.tsx`, `src/features/application/actions.
 10. **`POST /merchant/onboarding/submit`** (*as sub-merchant*) submits the full merged form. A 400/422 response includes field errors, which the app maps back onto the form.
 11. **`GET /merchant/v2`** (*as sub-merchant*) runs right after submit to refresh progress (`goLiveChecklist.onboardingFormSubmitted`).
 12. **`POST /merchant/onboarding/review`** (*as sub-merchant*) runs when the merchant clicks **Submit application**, after verification is approved and the form is submitted.
+
+## Merchant dashboard (`/dashboard/adora-pay`)
+
+Code: `src/lib/payments/payments.ts`, `src/features/dashboard/load-payments-series.ts`
+
+- **`GET /merchant/payments`** (*as sub-merchant*) loads the Payments chart for any merchant that has a Coinflow account. It requests `status=SETTLED` over the last 8 days (`since`/`until` in epoch ms), sorted by `createdAt`, and pages through 100 rows at a time (up to 20 pages). The response is a bare array of payments. The method comes from whichever `*Info` field is present (`cardInfo`, `cryptoInfo`, `cashAppInfo`, …). Each payment's amount is `totals.subtotal.cents`. Payments are bucketed into 7 days in the shop's time zone (`shops.timezone`, default `America/Los_Angeles`).

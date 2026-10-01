@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { AlertCircleIcon, ArrowRightIcon, Loader2Icon, XIcon } from "lucide-react";
 import { OnboardingFields } from "@/components/onboarding-form/onboarding-fields";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -47,9 +47,12 @@ function scrollToField(name: string) {
 export function AdoraPaySignup({
   prefill,
   initialProgress,
+  backdrop,
 }: {
   prefill: FormValues;
   initialProgress?: SubmerchantProgress;
+  /** Shown behind the flow. Defaults to the marketing carousel. */
+  backdrop?: ReactNode;
 }) {
   const [stage, setStage] = useState<Stage>(() => stageFor(initialProgress));
   const [progress, setProgress] = useState(initialProgress);
@@ -97,8 +100,28 @@ export function AdoraPaySignup({
 
   return (
     <div className="relative min-h-[32rem] flex-1">
-      <FeatureCarousel />
-      {stage === "page" && (
+      {backdrop ? (
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-8">
+          {stage === "page" && (
+            <div className="flex flex-col gap-3 rounded-xl bg-shop-surface p-4 ring-1 ring-foreground/10 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-heading font-semibold text-shop-ink">Finish setting up Adora Pay</p>
+                <p className="text-sm text-muted-foreground">
+                  Your application hasn&apos;t been sent for review yet.
+                </p>
+              </div>
+              <Button type="button" className="gap-2" onClick={() => setStage(stageFor(progress))}>
+                Continue onboarding
+                <ArrowRightIcon />
+              </Button>
+            </div>
+          )}
+          {backdrop}
+        </div>
+      ) : (
+        <FeatureCarousel />
+      )}
+      {stage === "page" && !backdrop && (
         <div className="absolute top-1/2 right-6 z-10 -translate-y-1/2 sm:right-10">
           <Button
             type="button"

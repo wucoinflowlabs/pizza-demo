@@ -31,3 +31,24 @@ export type Submerchant = {
   verification?: { status?: string };
   [key: string]: unknown;
 };
+
+type Money = { cents?: number; currency?: string };
+
+/** Per-method details. Exactly one is present on a payment, and it carries the status. */
+type PaymentMethodInfo = { status?: string; [key: string]: unknown };
+
+/** The fields the dashboard reads from `GET /merchant/payments`. */
+export type CoinflowPayment = {
+  paymentId: string;
+  createdAt: string;
+  totals?: { subtotal?: Money; total?: Money };
+  cardInfo?: PaymentMethodInfo;
+  bankTransferInfo?: PaymentMethodInfo;
+  cryptoInfo?: PaymentMethodInfo;
+  cashAppInfo?: PaymentMethodInfo;
+  paypalInfo?: PaymentMethodInfo;
+  venmoInfo?: PaymentMethodInfo;
+  pixInfo?: PaymentMethodInfo;
+  ibanInfo?: PaymentMethodInfo;
+  wireInfo?: PaymentMethodInfo;
+};
