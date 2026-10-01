@@ -1,31 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Menu } from "@base-ui/react/menu";
 import { Popover } from "@base-ui/react/popover";
 import {
-  ActivityIcon,
-  CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   ChevronsUpDownIcon,
-  CircleCheckIcon,
-  CircleXIcon,
-  ClockIcon,
-  CoinsIcon,
   CopyIcon,
-  CreditCardIcon,
   EllipsisIcon,
   FunnelIcon,
-  LandmarkIcon,
-  ShieldCheckIcon,
-  ShieldIcon,
-  ShieldXIcon,
-  Undo2Icon,
+  PanelRightOpenIcon,
   UserRoundIcon,
-  WalletIcon,
-  type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
@@ -40,8 +28,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ORDER_WINDOWS, type Order, type OrderMethod, type OrderWindow } from "../orders";
-import { PAYMENT_METHODS } from "../payments-series";
+import { ORDER_WINDOWS, type Order, type OrderWindow } from "../orders";
+import { PaymentDrawer } from "./payment-drawer";
+import {
+  CopyableId,
+  MethodPill,
+  ProtectionPill,
+  StatusPill,
+  ThreeDsPill,
+  humanize,
+  methodLabel,
+  useCopy,
+} from "./payment-pills";
 
 const PAGE_SIZE = 50;
 const NONE = "None";
@@ -63,27 +61,6 @@ const NO_FILTERS: Filters = {
   code: [],
   protection: [],
 };
-
-function shortId(id: string) {
-  return id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id;
-}
-
-/** "SETTLED" → "Settled", "PENDING_REVIEW" → "Pending review". */
-function humanize(value: string) {
-  const words = value.replace(/[_-]+/g, " ").trim().toLowerCase();
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-function cardBrand(brand: string) {
-  return brand.length <= 4 ? brand.toUpperCase() : humanize(brand);
-}
-
-function methodLabel(method: OrderMethod) {
-  if (method.wallet === "apple-pay") return "Apple Pay";
-  if (method.wallet === "google-pay") return "Google Pay";
-  if (method.key === "card") return method.brand ? cardBrand(method.brand) : "Card";
-  return PAYMENT_METHODS.find((item) => item.key === method.key)?.label ?? "Other";
-}
 
 /** Relative to the server's clock so the server and client render the same text. */
 function timeAgo(at: Date, now: Date) {
@@ -111,136 +88,6 @@ function valueOf(order: Order, column: ValueColumn) {
   if (column === "method") return methodLabel(order.method);
   const value = order[column];
   return value ? humanize(value) : NONE;
-}
-
-type Tone = "green" | "amber" | "red" | "gray" | "indigo" | "lime" | "sky";
-
-const TONES: Record<Tone, string> = {
-  green: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  amber: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  red: "bg-red-50 text-red-700 ring-red-600/20",
-  gray: "bg-white text-foreground/80 ring-foreground/10",
-  indigo: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
-  lime: "bg-lime-50 text-lime-800 ring-lime-600/25",
-  sky: "bg-sky-50 text-sky-700 ring-sky-600/20",
-};
-
-function Pill({ tone, icon: Icon, children }: { tone: Tone; icon?: LucideIcon; children: ReactNode }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ring-1 ring-inset",
-        TONES[tone],
-      )}
-    >
-      {Icon && <Icon className="size-3.5 shrink-0" />}
-      {children}
-    </span>
-  );
-}
-
-function AppleLogo() {
-  return (
-    <svg viewBox="0 0 384 512" aria-hidden className="size-3.5 shrink-0 fill-current">
-      <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
-    </svg>
-  );
-}
-
-function MethodPill({ method }: { method: OrderMethod }) {
-  if (method.wallet === "apple-pay") {
-    return (
-      <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ring-1 ring-inset", TONES.gray)}>
-        <AppleLogo />
-        Apple Pay
-      </span>
-    );
-  }
-  if (method.wallet === "google-pay") return <Pill tone="gray" icon={WalletIcon}>Google Pay</Pill>;
-  if (method.key === "card") {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-600/20 ring-inset">
-        {method.brand ? (
-          <span className="font-extrabold tracking-tight text-blue-900 italic">{cardBrand(method.brand)}</span>
-        ) : (
-          <CreditCardIcon className="size-3.5" />
-        )}
-        {method.last4 ?? (method.brand ? null : "Card")}
-      </span>
-    );
-  }
-  const icon = method.key === "ach" ? LandmarkIcon : method.key === "crypto" ? CoinsIcon : WalletIcon;
-  return <Pill tone="gray" icon={icon}>{methodLabel(method)}</Pill>;
-}
-
-function StatusPill({ status }: { status?: string }) {
-  if (!status) return <span className="text-muted-foreground">—</span>;
-  const label = humanize(status);
-  if (/settled|complete|success|captured|paid/i.test(status))
-    return <Pill tone="green" icon={CircleCheckIcon}>{label}</Pill>;
-  if (/fail|declin|reject|error|chargeback|fraud/i.test(status))
-    return <Pill tone="red" icon={CircleXIcon}>{label}</Pill>;
-  if (/refund|cancel|void|expire|revers/i.test(status))
-    return <Pill tone="gray" icon={Undo2Icon}>{label}</Pill>;
-  return <Pill tone="amber" icon={ClockIcon}>{label}</Pill>;
-}
-
-function ProtectionPill({ decision }: { decision?: string }) {
-  if (!decision) return <span className="text-muted-foreground">—</span>;
-  const label = humanize(decision);
-  if (/approv|accept|protect|pass/i.test(decision))
-    return <Pill tone="indigo" icon={ShieldCheckIcon}>{label}</Pill>;
-  if (/reject|declin|den|fail/i.test(decision))
-    return <Pill tone="red" icon={ShieldXIcon}>{label}</Pill>;
-  return <Pill tone="gray" icon={ShieldIcon}>{label}</Pill>;
-}
-
-function ThreeDsPill({ result }: { result?: string }) {
-  if (!result) return <Pill tone="gray" icon={ShieldIcon}>N/A</Pill>;
-  const label = humanize(result);
-  if (/challeng/i.test(result)) return <Pill tone="lime" icon={ActivityIcon}>{label}</Pill>;
-  if (/fail|reject|declin/i.test(result)) return <Pill tone="red" icon={ShieldXIcon}>{label}</Pill>;
-  if (/frictionless|success|authenticat|pass|approv/i.test(result))
-    return <Pill tone="sky" icon={ShieldCheckIcon}>{label}</Pill>;
-  return <Pill tone="gray" icon={ShieldIcon}>{label}</Pill>;
-}
-
-function useCopy() {
-  const [copied, setCopied] = useState<string | null>(null);
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(null), 1500);
-    return () => clearTimeout(timer);
-  }, [copied]);
-  const copy = async (value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(value);
-    } catch {
-      // Clipboard access can be blocked; the full value is still in the cell's title.
-    }
-  };
-  return { copied, copy };
-}
-
-function CopyableId({ value, label }: { value?: string; label: string }) {
-  const { copied, copy } = useCopy();
-  if (!value) return <span className="text-muted-foreground">—</span>;
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span title={value} className="tabular-nums">
-        {shortId(value)}
-      </span>
-      <button
-        type="button"
-        onClick={() => copy(value)}
-        aria-label={`Copy ${label}`}
-        className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-shop-accent focus-visible:outline-none"
-      >
-        {copied ? <CheckIcon className="size-3.5 text-emerald-600" /> : <CopyIcon className="size-3.5" />}
-      </button>
-    </span>
-  );
 }
 
 const POPUP =
@@ -416,12 +263,21 @@ function WindowToggle({ value }: { value: OrderWindow }) {
   );
 }
 
-function RowActions({ order, onCustomer }: { order: Order; onCustomer: (customer: string) => void }) {
+function RowActions({
+  order,
+  onCustomer,
+  onOpen,
+}: {
+  order: Order;
+  onCustomer: (customer: string) => void;
+  onOpen: () => void;
+}) {
   const { copy } = useCopy();
   const iconButton =
     "rounded-md p-1.5 text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-shop-accent focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30";
   return (
-    <span className="inline-flex items-center gap-2">
+    // Clicks here (and in the portaled menu, which bubbles through React) shouldn't also open the row.
+    <span className="inline-flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
       <button
         type="button"
         disabled={!order.customer}
@@ -439,6 +295,13 @@ function RowActions({ order, onCustomer }: { order: Order; onCustomer: (customer
         <Menu.Portal>
           <Menu.Positioner sideOffset={4} align="end" className="z-50">
             <Menu.Popup className={cn(POPUP, "min-w-44 p-1")}>
+              <Menu.Item
+                onClick={onOpen}
+                className="flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 outline-none data-highlighted:bg-muted"
+              >
+                <PanelRightOpenIcon className="size-3.5" />
+                View details
+              </Menu.Item>
               <Menu.Item
                 onClick={() => copy(order.id)}
                 className="flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 outline-none data-highlighted:bg-muted"
@@ -508,6 +371,19 @@ export function OrdersTable({
   const [sort, setSort] = useState<Sort>({ key: "date", dir: "desc" });
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get("payment"));
+  const portalRef = useRef<HTMLDivElement>(null);
+
+  // Keeps ?payment= in the address bar so a payment can be linked to. `window` is the
+  // time-window prop here, so the browser globals go through globalThis.
+  useEffect(() => {
+    const url = new URL(globalThis.location.href);
+    if (selectedId) url.searchParams.set("payment", selectedId);
+    else url.searchParams.delete("payment");
+    if (url.href !== globalThis.location.href) globalThis.history.replaceState(null, "", url);
+  }, [selectedId, window]);
 
   const options = useMemo(() => {
     const collect = (column: ValueColumn) => {
@@ -562,6 +438,13 @@ export function OrdersTable({
     setFilters((current) => ({ ...current, [column]: value }));
     setLimit(PAGE_SIZE);
   };
+  const openOnKey = (event: KeyboardEvent<HTMLTableRowElement>, id: string) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setSelectedId(id);
+    }
+  };
   const toggleSort = (key: SortKey) =>
     setSort((current) =>
       current.key === key ? { key, dir: current.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" },
@@ -612,7 +495,15 @@ export function OrdersTable({
               const created = new Date(order.createdAt);
               const valid = !Number.isNaN(created.getTime());
               return (
-                <TableRow key={order.id}>
+                <TableRow
+                  key={order.id}
+                  tabIndex={0}
+                  aria-label={`Payment ${order.id}`}
+                  data-state={order.id === selectedId ? "selected" : undefined}
+                  onClick={() => setSelectedId(order.id)}
+                  onKeyDown={(event) => openOnKey(event, order.id)}
+                  className="cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-none"
+                >
                   <TableCell className="py-5 pl-6 text-foreground/80">
                     {valid ? (
                       <time
@@ -657,7 +548,11 @@ export function OrdersTable({
                     <ThreeDsPill result={order.threeDs} />
                   </TableCell>
                   <TableCell className="pr-6 text-right">
-                    <RowActions order={order} onCustomer={(customer) => setFilter("customer", customer)} />
+                    <RowActions
+                      order={order}
+                      onCustomer={(customer) => setFilter("customer", customer)}
+                      onOpen={() => setSelectedId(order.id)}
+                    />
                   </TableCell>
                 </TableRow>
               );
@@ -693,6 +588,15 @@ export function OrdersTable({
           </span>
         </div>
       )}
+      <div ref={portalRef} />
+      <PaymentDrawer
+        paymentId={selectedId}
+        timeZone={timeZone}
+        container={portalRef}
+        onClose={() => setSelectedId(null)}
+        onCustomer={(customer) => setFilter("customer", customer)}
+        onRefunded={() => router.refresh()}
+      />
     </OrdersCard>
   );
 }

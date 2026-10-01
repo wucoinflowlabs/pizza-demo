@@ -19,7 +19,10 @@ Every Coinflow API call the app makes to onboard a merchant, in the order it hap
 | 7 | `POST` | `/merchant/files/upload-url` | ✓ | Get a presigned URL for a document upload |
 | 8 | `POST` | `/merchant/onboarding/submit` | ✓ | Submit the complete onboarding form |
 | 9 | `POST` | `/merchant/onboarding/review` | ✓ | Submit the application for compliance review |
-| 10 | `GET` | `/merchant/payments?since=&until=&status=&page=&limit=` | ✓ | List payments for the merchant dashboard chart |
+| 10 | `GET` | `/merchant/payments?since=&until=&status=&page=&limit=` | ✓ | List payments for the dashboard chart and Payments table |
+| 11 | `GET` | `/merchant/payments/{paymentId}` | ✓ | Load one payment for the Payments detail drawer |
+| 12 | `GET` | `/merchant/payments/{paymentId}/refund-quote?partialAmount=` | ✓ | Preview a refund's fees before confirming |
+| 13 | `PUT` | `/merchant/payments/{paymentId}/refund` | ✓ | Refund a payment (full or partial) |
 
 ## Main flow: operator invite, then `/apply`
 
@@ -50,3 +53,12 @@ Code: `src/app/(application)/apply/page.tsx`, `src/features/application/actions.
 Code: `src/lib/payments/payments.ts`, `src/features/dashboard/load-payments-series.ts`
 
 - **`GET /merchant/payments`** (*as sub-merchant*) loads the Payments chart for any merchant that has a Coinflow account. It requests `status=SETTLED` over the last 8 days (`since`/`until` in epoch ms), sorted by `createdAt`, and pages through 100 rows at a time (up to 20 pages). The response is a bare array of payments. The method comes from whichever `*Info` field is present (`cardInfo`, `cryptoInfo`, `cashAppInfo`, …). Each payment's amount is `totals.subtotal.cents`. Payments are bucketed into 7 days in the shop's time zone (`shops.timezone`, default `America/Los_Angeles`).
+
+## Payments table and detail drawer (`/dashboard/adora-pay/payments`)
+
+Code: `src/features/dashboard/load-orders.ts`, `src/features/dashboard/payment-detail.ts`, `src/app/api/payments/[paymentId]/`, `src/features/dashboard/payment-actions.ts`
+
+- **`GET /merchant/payments`** (*as sub-merchant*) lists every payment in the chosen window (24h/7d/30d/90d), any status. Method comes from the `*Info` field present; Apple/Google Pay from `cardInfo.mobileWallet`; Code is `cardInfo.authCode` on failed payments; 3D Secure is `cardInfo.processed3DS`; customer is `customer.customerId`, falling back to `wallet`.
+- **`GET /merchant/payments/{paymentId}`** (*as sub-merchant*) runs when a row is clicked, through the app's `GET /api/payments/{paymentId}`, which resolves the sub-merchant from the session. Chosen over `/merchant/payments/enhanced/{paymentId}` because it returns the payment itself (amount, fees, status, card brand/last4, statement descriptor, chargeback protection decision, refunds) **and** embeds `enhancedTxInfo` (cardholder and billing address, BIN/issuer, IP location, device, 3DS, AVS/CVV, decline explanation). The response is reduced to the fields the drawer shows before it reaches the browser.
+- **`GET /merchant/payments/{paymentId}/refund-quote`** (*as sub-merchant*) fills the refund dialog's fee preview, via `GET /api/payments/{paymentId}/refund-quote`. `partialAmount` is in cents; omitted for a full refund.
+- **`PUT /merchant/payments/{paymentId}/refund`** (*as sub-merchant*) sends the refund from a server action with `{ refundReason, partialAmount?: { cents } }`. Only `SETTLED`/`DEPOSITED` payments with an unrefunded balance offer the button.

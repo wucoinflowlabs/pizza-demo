@@ -1,6 +1,6 @@
 import "server-only";
 import { paymentsRequest } from "./client";
-import type { CoinflowPayment } from "./types";
+import type { CoinflowPayment, CoinflowPaymentDetail, RefundQuote, RefundReason } from "./types";
 
 const PAGE_SIZE = 100;
 const MAX_PAGES = 20;
@@ -39,4 +39,39 @@ export async function listMerchantPayments(
     if (rows.length < PAGE_SIZE) break;
   }
   return payments;
+}
+
+/** One payment with its enhanced details (device, 3DS, AVS, IP location, decline reason). */
+export function getMerchantPayment(submerchantId: string, paymentId: string) {
+  return paymentsRequest<CoinflowPaymentDetail>({
+    method: "GET",
+    path: `/merchant/payments/${encodeURIComponent(paymentId)}`,
+    asSubmerchant: submerchantId,
+  });
+}
+
+/** What a refund would cost, without queuing it. Omit `partialCents` for a full refund. */
+export function quoteRefund(submerchantId: string, paymentId: string, partialCents?: number) {
+  const query = partialCents === undefined ? "" : `?partialAmount=${partialCents}`;
+  return paymentsRequest<RefundQuote>({
+    method: "GET",
+    path: `/merchant/payments/${encodeURIComponent(paymentId)}/refund-quote${query}`,
+    asSubmerchant: submerchantId,
+  });
+}
+
+export function refundPayment(
+  submerchantId: string,
+  paymentId: string,
+  { reason, partialCents }: { reason: RefundReason; partialCents?: number },
+) {
+  return paymentsRequest<unknown>({
+    method: "PUT",
+    path: `/merchant/payments/${encodeURIComponent(paymentId)}/refund`,
+    body: {
+      refundReason: reason,
+      ...(partialCents === undefined ? {} : { partialAmount: { cents: partialCents } }),
+    },
+    asSubmerchant: submerchantId,
+  });
 }

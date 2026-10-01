@@ -3,20 +3,15 @@ import { redirect } from "next/navigation";
 import { OrdersTable } from "@/features/dashboard/components/orders-table";
 import { loadOrders } from "@/features/dashboard/load-orders";
 import { parseOrderWindow } from "@/features/dashboard/orders";
-import { getMerchantLogin } from "@/lib/merchant-logins";
-import { findSubmerchantIdByEmail } from "@/lib/payments/submerchants";
-import { getCurrentMerchantEmail } from "@/lib/session";
+import { getSessionSubmerchant } from "@/features/dashboard/session-submerchant";
 
 export const metadata: Metadata = { title: "Payments" };
 
 export default async function PaymentsPage({ searchParams }: PageProps<"/dashboard/adora-pay/payments">) {
-  const email = await getCurrentMerchantEmail();
-  if (!email) redirect("/login");
-  const login = await getMerchantLogin(email);
-  if (!login) redirect("/login");
-
+  const session = await getSessionSubmerchant();
+  if (!session) redirect("/login");
   // Payments only exist once the shop has an Adora Pay account.
-  const submerchantId = await findSubmerchantIdByEmail(login.email);
+  const { login, submerchantId } = session;
   if (!submerchantId) redirect("/dashboard/adora-pay");
 
   const window = parseOrderWindow((await searchParams).window);

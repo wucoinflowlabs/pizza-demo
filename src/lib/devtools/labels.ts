@@ -9,6 +9,9 @@ const CALL_LABELS: { method: string; pattern: RegExp; label: string }[] = [
   { method: "POST", pattern: /^\/merchant\/onboarding\/review$/, label: "Submit for compliance review" },
   { method: "GET", pattern: /^\/merchant\/v2$/, label: "Check verification status" },
   { method: "GET", pattern: /^\/merchant\/payments(\?|$)/, label: "List payments" },
+  { method: "GET", pattern: /^\/merchant\/payments\/[^/?]+$/, label: "Get payment" },
+  { method: "GET", pattern: /^\/merchant\/payments\/[^/?]+\/refund-quote(\?|$)/, label: "Quote refund" },
+  { method: "PUT", pattern: /^\/merchant\/payments\/[^/?]+\/refund$/, label: "Refund payment" },
   { method: "POST", pattern: /^\/merchant\/settlement-address$/, label: "Set settlement address" },
   { method: "POST", pattern: /^\/merchant\/files\/upload-url$/, label: "Request document upload URL" },
 ];
