@@ -34,10 +34,13 @@ function toCents(value: string) {
 
 export function RefundDialog({
   detail,
+  locationId,
   container,
   onRefunded,
 }: {
   detail: PaymentDetail;
+  /** The franchise store the payment belongs to. Omitted for a single store. */
+  locationId?: string;
   container: RefObject<HTMLElement | null>;
   onRefunded: () => void;
 }) {
@@ -69,7 +72,10 @@ export function RefundDialog({
     const controller = new AbortController();
     // Waits for typing to settle before asking for a quote.
     const timer = setTimeout(async () => {
-      const query = sendCents === undefined ? "" : `?partialAmount=${sendCents}`;
+      const params = new URLSearchParams();
+      if (sendCents !== undefined) params.set("partialAmount", String(sendCents));
+      if (locationId) params.set("location", locationId);
+      const query = params.size ? `?${params.toString()}` : "";
       try {
         const response = await fetch(
           `/api/payments/${encodeURIComponent(detail.id)}/refund-quote${query}`,
@@ -90,11 +96,16 @@ export function RefundDialog({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [open, quoteKey, quotes, sendCents, detail.id]);
+  }, [open, quoteKey, quotes, sendCents, detail.id, locationId]);
 
   const confirm = () =>
     startTransition(async () => {
-      const result = await refundPaymentAction({ paymentId: detail.id, reason, partialCents: sendCents });
+      const result = await refundPaymentAction({
+        paymentId: detail.id,
+        reason,
+        partialCents: sendCents,
+        location: locationId,
+      });
       if (!result.ok) {
         toast.error(result.error);
         return;

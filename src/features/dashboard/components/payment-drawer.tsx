@@ -338,8 +338,14 @@ function without<T>(record: Record<string, T>, key: string) {
 const ICON_BUTTON =
   "rounded-md p-2 text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-shop-accent focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30";
 
+/** `?location=` for a franchise owner, so the server knows which store's sub-merchant to ask. */
+function locationQuery(locationId?: string) {
+  return locationId ? `?${new URLSearchParams({ location: locationId }).toString()}` : "";
+}
+
 export function PaymentDrawer({
   paymentId,
+  locationId,
   timeZone,
   container,
   onClose,
@@ -347,6 +353,8 @@ export function PaymentDrawer({
   onRefunded,
 }: {
   paymentId: string | null;
+  /** The franchise store the payment belongs to. Omitted for a single store. */
+  locationId?: string;
   timeZone: string;
   container: RefObject<HTMLElement | null>;
   onClose: () => void;
@@ -366,7 +374,7 @@ export function PaymentDrawer({
     const controller = new AbortController();
     (async () => {
       try {
-        const response = await fetch(`/api/payments/${encodeURIComponent(paymentId)}`, {
+        const response = await fetch(`/api/payments/${encodeURIComponent(paymentId)}${locationQuery(locationId)}`, {
           signal: controller.signal,
         });
         const body = await response.json();
@@ -379,7 +387,7 @@ export function PaymentDrawer({
       }
     })();
     return () => controller.abort();
-  }, [paymentId, needsFetch]);
+  }, [paymentId, locationId, needsFetch]);
 
   const forget = (id: string) => {
     setDetails((current) => without(current, id));
@@ -431,6 +439,7 @@ export function PaymentDrawer({
                   {detail && (
                     <RefundDialog
                       detail={detail}
+                      locationId={locationId}
                       container={container}
                       onRefunded={() => {
                         forget(detail.id);

@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AdoraCustomer } from "../adora-customers";
-import { signInAsStore } from "../actions";
+import { signInAsFranchise, signInAsStore } from "../actions";
 import type { AdoraStore } from "../adora-stores";
 import {
   revealApproval,
@@ -48,7 +48,7 @@ function brandSummary(stores: CustomerStore[]) {
   return `${onboarded}/${stores.length} onboarded`;
 }
 
-function SignInButton({ primary }: { primary: boolean }) {
+function SignInButton({ primary, label = "Sign in as restaurant" }: { primary: boolean; label?: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="sm" variant={primary ? "default" : "outline"} disabled={pending}>
@@ -57,7 +57,7 @@ function SignInButton({ primary }: { primary: boolean }) {
       ) : (
         <LogInIcon data-icon="inline-start" />
       )}
-      Sign in as restaurant
+      {label}
     </Button>
   );
 }
@@ -69,6 +69,15 @@ function SignInAsStore({ store }: { store: CustomerStore }) {
       <input type="hidden" name="storeId" value={store.id} />
       {store.merchantId && <input type="hidden" name="merchantId" value={store.merchantId} />}
       <SignInButton primary={store.status !== "not-started"} />
+    </form>
+  );
+}
+
+function SignInAsFranchise({ customerId }: { customerId: string }) {
+  return (
+    <form action={signInAsFranchise}>
+      <input type="hidden" name="customerId" value={customerId} />
+      <SignInButton primary={false} label="Sign in as franchise owner" />
     </form>
   );
 }
@@ -199,7 +208,10 @@ export function CustomersTable({
                         </div>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
-                        {brandSummary(customerStores)}
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                          {brandSummary(customerStores)}
+                          {count > 1 && <SignInAsFranchise customerId={customer.id} />}
+                        </div>
                       </TableCell>
                     </TableRow>
                     {open && (

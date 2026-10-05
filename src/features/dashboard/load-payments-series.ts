@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildPaymentsSeries, type PaymentsSeries } from "./payments-series";
 
 const DAYS = 7;
-const DEFAULT_TIME_ZONE = "America/Los_Angeles";
+export const DEFAULT_TIME_ZONE = "America/Los_Angeles";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type PaymentsSeriesResult =
@@ -22,23 +22,26 @@ export async function shopTimeZone(loginId: string) {
   return data?.timezone || DEFAULT_TIME_ZONE;
 }
 
-/** The last week of settled payments, bucketed by day in the shop's time zone. */
+/**
+ * The last week of settled payments, bucketed by day in the shop's time zone.
+ * A franchise owner passes every store's sub-merchant; each is its own request.
+ */
 export async function loadPaymentsSeries({
-  submerchantId,
+  submerchantIds,
   loginId,
 }: {
-  submerchantId: string;
-  loginId: string;
+  submerchantIds: string[];
+  /** The shop whose time zone days are bucketed in. Omitted for a franchise. */
+  loginId?: string;
 }): Promise<PaymentsSeriesResult> {
   try {
     const now = new Date();
-    const timeZone = await shopTimeZone(loginId);
+    const timeZone = loginId ? await shopTimeZone(loginId) : DEFAULT_TIME_ZONE;
     // One extra day covers any time zone offset; buildPaymentsSeries drops rows outside the range.
-    const payments = await listMerchantPayments(submerchantId, {
-      since: now.getTime() - (DAYS + 1) * DAY_MS,
-      until: now.getTime(),
-      status: "SETTLED",
-    });
+    const range = { since: now.getTime() - (DAYS + 1) * DAY_MS, until: now.getTime(), status: "SETTLED" };
+    const payments = (
+      await Promise.all(submerchantIds.map((submerchantId) => listMerchantPayments(submerchantId, range)))
+    ).flat();
     return { ok: true, series: buildPaymentsSeries(payments, { days: DAYS, timeZone, now }) };
   } catch (err) {
     console.error("[dashboard] payments could not be loaded", err);

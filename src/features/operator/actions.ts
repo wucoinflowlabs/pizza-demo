@@ -31,7 +31,7 @@ import {
   listSubmerchants,
 } from "@/lib/payments/submerchants";
 import { createWithAvailableId, toCreateBody, toDraftFields } from "@/lib/submerchant-account";
-import { startMerchantSession } from "@/lib/session";
+import { startFranchiseSession, startMerchantSession } from "@/lib/session";
 import {
   chainAddresses,
   getSettlementAddresses,
@@ -308,5 +308,13 @@ export async function signInAsStore(formData: FormData) {
     }));
 
   await startMerchantSession(login.email);
+  redirect("/dashboard");
+}
+
+/** Demo sign-in: opens the dashboard as the owner of every location under one brand. */
+export async function signInAsFranchise(formData: FormData) {
+  const customer = findAdoraCustomer(String(formData.get("customerId") ?? ""));
+  if (!customer) redirect("/operator");
+  await startFranchiseSession(customer.id);
   redirect("/dashboard");
 }

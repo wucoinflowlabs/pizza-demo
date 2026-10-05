@@ -4,6 +4,7 @@ import { signToken, verifyToken } from "./signing";
 
 const ACCOUNT_COOKIE = "za_account";
 const MERCHANT_COOKIE = "za_merchant";
+const FRANCHISE_COOKIE = "za_franchise";
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 const TWELVE_HOURS_SECONDS = 60 * 60 * 12;
 
@@ -42,9 +43,31 @@ export async function startMerchantSession(email: string) {
     subject: email,
     ttlSeconds: TWELVE_HOURS_SECONDS,
   });
-  (await cookies()).set(MERCHANT_COOKIE, token, cookieOptions(TWELVE_HOURS_SECONDS));
+  const jar = await cookies();
+  jar.delete(FRANCHISE_COOKIE);
+  jar.set(MERCHANT_COOKIE, token, cookieOptions(TWELVE_HOURS_SECONDS));
 }
 
+/** Ends the dashboard session, whether it was one store or a franchise owner. */
 export async function endMerchantSession() {
-  (await cookies()).delete(MERCHANT_COOKIE);
+  const jar = await cookies();
+  jar.delete(MERCHANT_COOKIE);
+  jar.delete(FRANCHISE_COOKIE);
+}
+
+/** The franchise (Adora customer id) a franchise owner signed in as. Replaces a store login. */
+export async function getCurrentFranchiseId(): Promise<string | undefined> {
+  const token = (await cookies()).get(FRANCHISE_COOKIE)?.value;
+  return verifyToken({ token, purpose: "franchise" });
+}
+
+export async function startFranchiseSession(customerId: string) {
+  const token = signToken({
+    purpose: "franchise",
+    subject: customerId,
+    ttlSeconds: TWELVE_HOURS_SECONDS,
+  });
+  const jar = await cookies();
+  jar.delete(MERCHANT_COOKIE);
+  jar.set(FRANCHISE_COOKIE, token, cookieOptions(TWELVE_HOURS_SECONDS));
 }
