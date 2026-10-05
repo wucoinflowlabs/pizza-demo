@@ -14,6 +14,8 @@ import {
   MonitorIcon,
   ReceiptTextIcon,
   TruckIcon,
+  UsersRoundIcon,
+  WalletCardsIcon,
   XIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -119,6 +121,23 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         label="Payments"
         icon={ReceiptTextIcon}
         active={pathname === "/dashboard/adora-pay/payments"}
+        onNavigate={onNavigate}
+        accent
+      />
+      <SectionLabel>Withdrawals</SectionLabel>
+      <NavItem
+        href="/dashboard/adora-pay/withdraws"
+        label="Withdraws"
+        icon={WalletCardsIcon}
+        active={pathname === "/dashboard/adora-pay/withdraws"}
+        onNavigate={onNavigate}
+        accent
+      />
+      <NavItem
+        href="/dashboard/adora-pay/withdrawers"
+        label="Withdrawers"
+        icon={UsersRoundIcon}
+        active={pathname === "/dashboard/adora-pay/withdrawers"}
         onNavigate={onNavigate}
         accent
       />

@@ -22,6 +22,18 @@ export type PayStep = {
 
 const VERIFIED = new Set(["approved", "partialApproval"]);
 
+/**
+ * Enrolled only after Coinflow has accepted the application.
+ * `applicationSubmitted` is `goLiveChecklist.applicationSubmitted`.
+ * `approved` is the account no longer being `blocked`.
+ */
+export function isAdoraPayEnrolled(progress: {
+  applicationSubmitted: boolean;
+  approved: boolean;
+}): boolean {
+  return progress.applicationSubmitted && progress.approved;
+}
+
 export function snapshotFromProgress(
   progress: {
     merchantId: string;

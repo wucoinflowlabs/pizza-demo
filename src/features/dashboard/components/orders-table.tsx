@@ -4,22 +4,15 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Menu } from "@base-ui/react/menu";
-import { Popover } from "@base-ui/react/popover";
 import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  ChevronsUpDownIcon,
   CopyIcon,
   EllipsisIcon,
-  FunnelIcon,
   PanelRightOpenIcon,
   UserRoundIcon,
 } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -30,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { ORDER_WINDOWS, type Order, type OrderWindow } from "../orders";
 import { PaymentDrawer } from "./payment-drawer";
+import { ColumnHead, NONE, POPUP, TextFilter, ValueFilter, timeAgo, type Sort as SortState } from "./table-controls";
 import {
   CopyableId,
   MethodPill,
@@ -42,13 +36,11 @@ import {
 } from "./payment-pills";
 
 const PAGE_SIZE = 50;
-const NONE = "None";
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-const relative = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });
 
 type SortKey = "date" | "subtotal";
-type Sort = { key: SortKey; dir: "asc" | "desc" };
+type Sort = SortState<SortKey>;
 type TextColumn = "id" | "customer";
 type ValueColumn = "method" | "status" | "code" | "protection";
 type Filters = Record<TextColumn, string> & Record<ValueColumn, string[]>;
@@ -61,17 +53,6 @@ const NO_FILTERS: Filters = {
   code: [],
   protection: [],
 };
-
-/** Relative to the server's clock so the server and client render the same text. */
-function timeAgo(at: Date, now: Date) {
-  const seconds = Math.round((at.getTime() - now.getTime()) / 1000);
-  const abs = Math.abs(seconds);
-  if (abs < 60) return "just now";
-  if (abs < 3600) return relative.format(Math.round(seconds / 60), "minute");
-  if (abs < 86_400) return relative.format(Math.round(seconds / 3600), "hour");
-  if (abs < 30 * 86_400) return relative.format(Math.round(seconds / 86_400), "day");
-  return relative.format(Math.round(seconds / (30 * 86_400)), "month");
-}
 
 function formatRange(days: number, now: Date, timeZone: string) {
   const day = (at: Date, withYear: boolean) =>
@@ -88,153 +69,6 @@ function valueOf(order: Order, column: ValueColumn) {
   if (column === "method") return methodLabel(order.method);
   const value = order[column];
   return value ? humanize(value) : NONE;
-}
-
-const POPUP =
-  "z-50 rounded-lg bg-popover p-2 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0";
-
-function FilterPopover({ label, active, children }: { label: string; active: boolean; children: ReactNode }) {
-  return (
-    <Popover.Root>
-      <Popover.Trigger
-        aria-label={`Filter ${label}`}
-        className={cn(
-          "rounded p-0.5 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-shop-accent focus-visible:outline-none",
-          active ? "text-shop-accent" : "text-muted-foreground/70",
-        )}
-      >
-        <FunnelIcon className={cn("size-3.5", active && "fill-current")} />
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner sideOffset={6} align="start" className="z-50">
-          <Popover.Popup className={cn(POPUP, "w-56")}>{children}</Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
-
-function TextFilter({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <FilterPopover label={label} active={value.trim() !== ""}>
-      <Input
-        autoFocus
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={`Search ${label.toLowerCase()}`}
-        aria-label={`Search ${label.toLowerCase()}`}
-      />
-      {value && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          className="mt-2 text-xs text-muted-foreground hover:text-foreground"
-        >
-          Clear
-        </button>
-      )}
-    </FilterPopover>
-  );
-}
-
-function ValueFilter({
-  label,
-  options,
-  selected,
-  onChange,
-}: {
-  label: string;
-  options: string[];
-  selected: string[];
-  onChange: (next: string[]) => void;
-}) {
-  return (
-    <FilterPopover label={label} active={selected.length > 0}>
-      {options.length === 0 ? (
-        <p className="px-1 py-1.5 text-muted-foreground">Nothing to filter in this window.</p>
-      ) : (
-        <ul className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
-          {options.map((option) => {
-            const checked = selected.includes(option);
-            return (
-              <li key={option}>
-                <label className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-muted">
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={(next) =>
-                      onChange(next ? [...selected, option] : selected.filter((item) => item !== option))
-                    }
-                  />
-                  <span className={cn(option === NONE && "text-muted-foreground")}>{option}</span>
-                </label>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {selected.length > 0 && (
-        <button
-          type="button"
-          onClick={() => onChange([])}
-          className="mt-2 px-1.5 text-xs text-muted-foreground hover:text-foreground"
-        >
-          Clear
-        </button>
-      )}
-    </FilterPopover>
-  );
-}
-
-function ColumnHead({
-  label,
-  sort,
-  sortKey,
-  onSort,
-  filter,
-  className,
-}: {
-  label: string;
-  sort?: Sort;
-  sortKey?: SortKey;
-  onSort?: (key: SortKey) => void;
-  filter?: ReactNode;
-  className?: string;
-}) {
-  const sorted = sortKey && sort?.key === sortKey ? sort.dir : undefined;
-  const SortIcon = sorted === "asc" ? ChevronUpIcon : sorted === "desc" ? ChevronDownIcon : ChevronsUpDownIcon;
-  return (
-    <TableHead
-      aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
-      className={cn("h-12 px-4 text-xs font-medium tracking-wide text-muted-foreground uppercase", className)}
-    >
-      <span className="inline-flex items-center gap-1.5">
-        {sortKey && onSort ? (
-          <button
-            type="button"
-            onClick={() => onSort(sortKey)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded uppercase transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-shop-accent focus-visible:outline-none",
-              sorted && "text-shop-accent",
-            )}
-          >
-            {label}
-            <SortIcon className="size-3.5" />
-          </button>
-        ) : (
-          label
-        )}
-        {filter}
-      </span>
-    </TableHead>
-  );
 }
 
 function WindowToggle({ value }: { value: OrderWindow }) {

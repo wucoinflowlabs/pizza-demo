@@ -6,7 +6,7 @@ import { PaymentsChart } from "@/features/dashboard/components/payments-chart";
 import { RememberMerchantAccount } from "@/features/dashboard/components/remember-merchant-account";
 import { LAMONICA_EMAIL, LAMONICA_PREFILL } from "@/features/dashboard/lamonica";
 import { loadPaymentsSeries } from "@/features/dashboard/load-payments-series";
-import { eventsFromSnapshot, snapshotFromProgress } from "@/features/dashboard/pay-status";
+import { eventsFromSnapshot, isAdoraPayEnrolled, snapshotFromProgress } from "@/features/dashboard/pay-status";
 import { merchantSignupPrefill } from "@/features/dashboard/signup-prefill";
 import { getMerchantLogin } from "@/lib/merchant-logins";
 import { sanitizeFormValues } from "@/lib/onboarding-form";
@@ -17,15 +17,22 @@ import { getCurrentAccountId, getCurrentMerchantEmail } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Adora Pay" };
 
-export default async function AdoraPayPage() {
+export default async function AdoraPayPage({ searchParams }: PageProps<"/dashboard/adora-pay">) {
   const email = await getCurrentMerchantEmail();
   if (!email) redirect("/login");
   const login = await getMerchantLogin(email);
   if (!login) redirect("/login");
+  const openApplication = (await searchParams).enroll === "1";
 
-  const submerchantId = await findSubmerchantIdByEmail(login.email);
+  const submerchantId =
+    (await findSubmerchantIdByEmail(login.email)) ?? login.cfSubmerchantId ?? undefined;
   if (!submerchantId) {
-    return <AdoraPaySignup prefill={merchantSignupPrefill(login.email)} />;
+    return (
+      <AdoraPaySignup
+        prefill={merchantSignupPrefill(login.email)}
+        openApplication={openApplication}
+      />
+    );
   }
 
   const [progress, form, currentAccountId, payments] = await Promise.all([
@@ -41,11 +48,9 @@ export default async function AdoraPayPage() {
     <PaymentsChart error={payments.message} />
   );
 
-  // Unblocked accounts that already submitted the form finished before sandbox
-  // KYB existed. Show payments instead of opening verification.
-  const settled =
-    progress.applicationSubmitted ||
-    (progress.onboardingFormSubmitted && progress.approved);
+  // Stay on the application until Coinflow has recorded the submission and
+  // unblocked the account. A submitted onboarding form is not enrollment.
+  const settled = isAdoraPayEnrolled(progress);
 
   if (!settled) {
     return (

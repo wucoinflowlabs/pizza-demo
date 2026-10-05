@@ -225,6 +225,7 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
             />
             <Field
               label="Phone"
+              optional
               type="tel"
               value={customer.phone}
               error={errors.phone}
@@ -331,7 +332,7 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                   orderId,
                   shop: SHOP.name,
                   fulfillment: customer.fulfillment,
-                  phone: customer.phone.trim(),
+                  ...(customer.phone.trim() ? { phone: customer.phone.trim() } : {}),
                   address:
                     customer.fulfillment === "delivery" ? customer.address.trim() : SHOP.address,
                   items: lines.map((line) => ({
@@ -402,6 +403,7 @@ function Field({
   onChange,
   type = "text",
   autoComplete,
+  optional = false,
 }: {
   label: string;
   value: string;
@@ -409,11 +411,13 @@ function Field({
   onChange: (value: string) => void;
   type?: string;
   autoComplete?: string;
+  optional?: boolean;
 }) {
   const id = label.toLowerCase().replace(/[^a-z]+/g, "-");
   return (
     <label htmlFor={id} className="block text-sm font-semibold">
       {label}
+      {optional && <span className="ml-1 font-normal text-[#181848]/50">optional</span>}
       <input
         id={id}
         type={type}
@@ -433,7 +437,8 @@ function validateCustomer(customer: Customer): FieldErrors {
   if (!customer.firstName.trim()) errors.firstName = "Enter a first name.";
   if (!customer.lastName.trim()) errors.lastName = "Enter a last name.";
   if (!/^\S+@\S+\.\S+$/.test(customer.email.trim())) errors.email = "Enter a valid email.";
-  if (customer.phone.replace(/\D/g, "").length < 10) errors.phone = "Enter a 10-digit phone number.";
+  const digits = customer.phone.replace(/\D/g, "");
+  if (digits.length > 0 && digits.length < 10) errors.phone = "Enter a 10-digit phone number.";
   if (customer.fulfillment === "delivery" && customer.address.trim().length < 5) {
     errors.address = "Enter a delivery address.";
   }

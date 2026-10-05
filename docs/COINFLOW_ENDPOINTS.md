@@ -23,6 +23,13 @@ Every Coinflow API call the app makes to onboard a merchant, in the order it hap
 | 11 | `GET` | `/merchant/payments/{paymentId}` | ✓ | Load one payment for the Payments detail drawer |
 | 12 | `GET` | `/merchant/payments/{paymentId}/refund-quote?partialAmount=` | ✓ | Preview a refund's fees before confirming |
 | 13 | `PUT` | `/merchant/payments/{paymentId}/refund` | ✓ | Refund a payment (full or partial) |
+| 14 | `GET` | `/merchant/withdrawers?search=` | ✓ | List withdrawers (staff) for the Withdrawers table |
+| 15 | `GET` | `/merchant/withdrawer/{id}/profile` | ✓ | Payouts, payout methods and reference keys for the withdrawer drawer |
+| 16 | `GET` | `/merchant/withdrawer/{id}/audit-logs` | ✓ | Withdrawer audit log tab |
+| 17 | `PUT` | `/merchant/block-withdrawer/{id}` | ✓ | Block or unblock a withdrawer (`{status, reason}`) |
+| 18 | `GET` | `/merchant/withdraws?since=&until=&search=&page=&limit=` | ✓ | List withdrawals for the Withdraws table |
+| 19 | `GET` | `/merchant/withdraws/{transferId}` | ✓ | Load one withdrawal for the Withdraws drawer |
+| 20 | `GET` | `/merchant/withdraws/{transferId}/enhanced` | ✓ | Recipient phone/email/card for Venmo, PayPal and card withdrawals |
 
 ## Main flow: operator invite, then `/apply`
 
@@ -62,3 +69,19 @@ Code: `src/features/dashboard/load-orders.ts`, `src/features/dashboard/payment-d
 - **`GET /merchant/payments/{paymentId}`** (*as sub-merchant*) runs when a row is clicked, through the app's `GET /api/payments/{paymentId}`, which resolves the sub-merchant from the session. Chosen over `/merchant/payments/enhanced/{paymentId}` because it returns the payment itself (amount, fees, status, card brand/last4, statement descriptor, chargeback protection decision, refunds) **and** embeds `enhancedTxInfo` (cardholder and billing address, BIN/issuer, IP location, device, 3DS, AVS/CVV, decline explanation). The response is reduced to the fields the drawer shows before it reaches the browser.
 - **`GET /merchant/payments/{paymentId}/refund-quote`** (*as sub-merchant*) fills the refund dialog's fee preview, via `GET /api/payments/{paymentId}/refund-quote`. `partialAmount` is in cents; omitted for a full refund.
 - **`PUT /merchant/payments/{paymentId}/refund`** (*as sub-merchant*) sends the refund from a server action with `{ refundReason, partialAmount?: { cents } }`. Only `SETTLED`/`DEPOSITED` payments with an unrefunded balance offer the button.
+
+## Withdrawers and Withdraws (`/dashboard/adora-pay/withdrawers`, `/dashboard/adora-pay/withdraws`)
+
+Code: `src/lib/payments/withdraws.ts`, `src/features/dashboard/withdrawals.ts`, `src/app/api/withdrawers/`, `src/app/api/withdraws/`
+
+- **`GET /merchant/withdrawers`** returns up to 100 users and 100 businesses and ignores paging. `search` is an exact match on email, user id/wallet or verification reference. Each row embeds the full merchant document, so `toWithdrawerRow` keeps only `merchantId`.
+- **`GET /merchant/withdraws`** takes `since`/`until` in epoch ms (the page sends whole days in the shop's time zone) and ignores them when `search` is set.
+- **`GET /merchant/withdraws/{transferId}`** only finds withdrawals on the exact sub-merchant in the header, not its children.
+
+### Seeding staff (`scripts/seed-withdrawers.mjs`)
+
+Staff become withdrawers through the parent key acting as the sub-merchant *and* as a user (`x-coinflow-auth-user-id: lamonica-<name>`):
+
+1. **`POST /withdraw/kyc`** `{info: {email, firstName, surName, physicalAddress, city, state, zip, country, dob, ssn}}`. Sandbox auto-approves US KYC; ssn `1111` + zip `11111` stays pending, ssn `9999` is rejected.
+2. **`POST /withdraw/venmo`** `{phoneNumber}` and **`POST /withdraw/paypal`** `{email}` link payout methods (approved withdrawers only).
+3. **`POST /merchant/withdraws/payout/delegated`** `{userId, amount, speed, account: <method token>, idempotencyKey}` pays tips from the sub-merchant's Coinflow wallet (`GET /merchant/withdraws/payout/balance`).
