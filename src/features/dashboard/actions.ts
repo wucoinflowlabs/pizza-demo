@@ -11,7 +11,11 @@ import {
   type FieldErrors,
   type FormValues,
 } from "@/lib/onboarding-form";
-import { saveMerchantLogin, setLoginSubmerchantId, verifyMerchantPassword } from "@/lib/merchant-logins";
+import {
+  getMerchantLoginBySubmerchantId,
+  saveMerchantLogin,
+  setLoginSubmerchantId,
+} from "@/lib/merchant-logins";
 import { PaymentsError } from "@/lib/payments/errors";
 import { saveOnboardingDraft, submitApplicationForReview, submitOnboardingForm } from "@/lib/payments/onboarding";
 import { findSubmerchantIdByEmail } from "@/lib/payments/submerchants";
@@ -27,35 +31,25 @@ import {
 import type { AdoraPaySnapshot } from "./pay-status";
 import { snapshotFromProgress } from "./pay-status";
 
-export async function signInMerchant(
-  _previous: { error?: string } | undefined,
-  formData: FormData,
-): Promise<{ error?: string }> {
-  const email = String(formData.get("email") ?? "");
-  const password = String(formData.get("password") ?? "");
-
-  let login: Awaited<ReturnType<typeof verifyMerchantPassword>>;
-  try {
-    login = await verifyMerchantPassword({ email, password });
-  } catch (err) {
-    console.error("[dashboard] merchant sign-in failed", err);
-    return { error: "Something went wrong. Please try again." };
+/** Opens the dashboard for the account this browser just onboarded. No password in the demo. */
+export async function signInAsCurrentAccount() {
+  if (!(await getCurrentMerchantEmail())) {
+    const accountId = await getCurrentAccountId();
+    const login = accountId ? await getMerchantLoginBySubmerchantId(accountId) : undefined;
+    if (!login) redirect("/operator");
+    await startMerchantSession(login.email);
   }
-
-  if (!login) return { error: "That email or password isn't right." };
-
-  await startMerchantSession(login.email);
   redirect("/dashboard");
 }
 
 export async function signOutMerchant() {
   await endMerchantSession();
-  redirect("/login");
+  redirect("/operator");
 }
 
 async function requireMerchantEmail() {
   const email = await getCurrentMerchantEmail();
-  if (!email) redirect("/login");
+  if (!email) redirect("/operator");
   return email;
 }
 

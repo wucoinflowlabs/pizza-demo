@@ -1,11 +1,16 @@
 "use server";
 
-import { shopDemoEmail } from "@/features/operator/adora-stores";
+import { redirect } from "next/navigation";
+import { LAMONICA_EMAIL } from "@/features/dashboard/lamonica";
+import { findAdoraCustomer } from "@/features/operator/adora-customers";
+import { findAdoraStore, shopDemoEmail } from "@/features/operator/adora-stores";
 import { storeAccountId } from "@/features/operator/store-account";
 import { createInviteUrl } from "@/lib/invites";
 import {
   assignSubmerchantLogin,
+  ensureMerchantLogin,
   getMerchantLogin,
+  getMerchantLoginBySubmerchantId,
   MerchantLoginEmailTakenError,
   saveMerchantLogin,
 } from "@/lib/merchant-logins";
@@ -26,6 +31,7 @@ import {
   listSubmerchants,
 } from "@/lib/payments/submerchants";
 import { createWithAvailableId, toCreateBody, toDraftFields } from "@/lib/submerchant-account";
+import { startFranchiseSession, startMerchantSession } from "@/lib/session";
 import {
   chainAddresses,
   getSettlementAddresses,
@@ -275,4 +281,40 @@ export async function createApplication({
     reused,
     warning: warnings.length ? warnings.join(" ") : undefined,
   };
+}
+
+/** The login a store had before onboarding. Lamonica's Westwood shop predates the generated addresses. */
+function defaultStoreEmail(customerId: string, storeId: string) {
+  return customerId === "lamonica" && storeId === "WESTWOOD"
+    ? LAMONICA_EMAIL
+    : shopDemoEmail(customerId, storeId);
+}
+
+/** Demo sign-in: opens the merchant dashboard as one store, no password. */
+export async function signInAsStore(formData: FormData) {
+  const customer = findAdoraCustomer(String(formData.get("customerId") ?? ""));
+  const store = customer && findAdoraStore(customer.id, String(formData.get("storeId") ?? ""));
+  if (!customer || !store) redirect("/operator");
+
+  // An onboarded store's login may have moved to the email the operator typed,
+  // so the Coinflow id finds it first.
+  const merchantId = String(formData.get("merchantId") ?? "") || undefined;
+  const login =
+    (merchantId && (await getMerchantLoginBySubmerchantId(merchantId))) ||
+    (await ensureMerchantLogin({
+      email: defaultStoreEmail(customer.id, store.id),
+      name: customer.name,
+      cfSubmerchantId: merchantId,
+    }));
+
+  await startMerchantSession(login.email);
+  redirect("/dashboard");
+}
+
+/** Demo sign-in: opens the dashboard as the owner of every location under one brand. */
+export async function signInAsFranchise(formData: FormData) {
+  const customer = findAdoraCustomer(String(formData.get("customerId") ?? ""));
+  if (!customer) redirect("/operator");
+  await startFranchiseSession(customer.id);
+  redirect("/dashboard");
 }

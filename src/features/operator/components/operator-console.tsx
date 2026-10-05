@@ -10,10 +10,8 @@ import { CustomersTable, type CustomerStore } from "./customers-table";
 const VIEWS = [
   {
     id: "customers",
-    label: "Adora customers",
+    label: "Franchises",
     icon: StoreIcon,
-    description:
-      "Restaurants running on Adora. Enable payment processing to move them onto Adora Payments.",
   },
   {
     id: "applications",
@@ -80,7 +78,9 @@ export function OperatorConsole({
         </div>
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-2xl font-semibold tracking-tight">{current.label}</h1>
-          <p className="text-sm text-muted-foreground">{current.description}</p>
+          {"description" in current && (
+            <p className="text-sm text-muted-foreground">{current.description}</p>
+          )}
         </div>
       </div>
       <div

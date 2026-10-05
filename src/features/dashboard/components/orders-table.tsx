@@ -1,15 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Menu } from "@base-ui/react/menu";
-import {
-  CopyIcon,
-  EllipsisIcon,
-  PanelRightOpenIcon,
-  UserRoundIcon,
-} from "lucide-react";
+import { CopyIcon, EllipsisIcon, PanelRightOpenIcon, UserRoundIcon } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +17,6 @@ import {
 } from "@/components/ui/table";
 import { ORDER_WINDOWS, type Order, type OrderWindow } from "../orders";
 import { PaymentDrawer } from "./payment-drawer";
-import { ColumnHead, NONE, POPUP, TextFilter, ValueFilter, timeAgo, type Sort as SortState } from "./table-controls";
 import {
   CopyableId,
   MethodPill,
@@ -34,13 +27,29 @@ import {
   methodLabel,
   useCopy,
 } from "./payment-pills";
+import {
+  ColumnHead,
+  FailedLocations,
+  LocationPicker,
+  NONE,
+  POPUP,
+  TextFilter,
+  ValueFilter,
+  WindowToggle,
+  formatRange,
+  timeAgo,
+  type LocationOption,
+  type Sort as SortOf,
+} from "./table-controls";
+
+export type { LocationOption };
 
 const PAGE_SIZE = 50;
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 type SortKey = "date" | "subtotal";
-type Sort = SortState<SortKey>;
+type Sort = SortOf<SortKey>;
 type TextColumn = "id" | "customer";
 type ValueColumn = "method" | "status" | "code" | "protection";
 type Filters = Record<TextColumn, string> & Record<ValueColumn, string[]>;
@@ -54,48 +63,12 @@ const NO_FILTERS: Filters = {
   protection: [],
 };
 
-function formatRange(days: number, now: Date, timeZone: string) {
-  const day = (at: Date, withYear: boolean) =>
-    at.toLocaleDateString("en-US", {
-      timeZone,
-      month: "short",
-      day: "numeric",
-      ...(withYear ? { year: "numeric" } : {}),
-    });
-  return `${day(new Date(now.getTime() - days * 86_400_000), false)} – ${day(now, true)}`;
-}
-
 function valueOf(order: Order, column: ValueColumn) {
   if (column === "method") return methodLabel(order.method);
   const value = order[column];
   return value ? humanize(value) : NONE;
 }
 
-function WindowToggle({ value }: { value: OrderWindow }) {
-  return (
-    <nav
-      aria-label="Time window"
-      className="inline-flex w-fit rounded-lg bg-muted p-1 ring-1 ring-foreground/5"
-    >
-      {ORDER_WINDOWS.map((option) => (
-        <Link
-          key={option.key}
-          href={`?window=${option.key}`}
-          scroll={false}
-          aria-current={value === option.key ? "page" : undefined}
-          className={cn(
-            "rounded-md px-4 py-1.5 text-sm transition-colors",
-            value === option.key
-              ? "bg-background font-medium text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {option.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
 
 function RowActions({
   order,
@@ -163,11 +136,15 @@ function OrdersCard({
   subtitle,
   total,
   window,
+  locations,
+  location,
   children,
 }: {
   subtitle: string;
   total?: string;
   window: OrderWindow;
+  locations?: LocationOption[];
+  location?: string;
   children: ReactNode;
 }) {
   return (
@@ -182,12 +159,16 @@ function OrdersCard({
         )}
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <WindowToggle value={window} />
+        <div className="flex flex-wrap items-center gap-3">
+          <WindowToggle value={window} location={location} />
+          {locations && <LocationPicker locations={locations} value={location} window={window} />}
+        </div>
         {children}
       </CardContent>
     </Card>
   );
 }
+
 
 export function OrdersTable({
   window,
@@ -195,20 +176,34 @@ export function OrdersTable({
   timeZone = "America/Los_Angeles",
   now: nowIso,
   error,
+  locations,
+  location,
+  failedLocations = [],
 }: {
   window: OrderWindow;
   orders?: Order[];
   timeZone?: string;
   now?: string;
   error?: string;
+  /** Set for a franchise owner: adds the location picker and column. */
+  locations?: LocationOption[];
+  /** The picked store, or undefined for all locations. */
+  location?: string;
+  /** Stores whose payments couldn't be loaded. */
+  failedLocations?: string[];
 }) {
   const [sort, setSort] = useState<Sort>({ key: "date", dir: "desc" });
-  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
-  const [limit, setLimit] = useState(PAGE_SIZE);
   const searchParams = useSearchParams();
+  // ?customer= arrives from a link elsewhere (e.g. a chargeback) and seeds the customer filter.
+  const [filters, setFilters] = useState<Filters>(() => ({
+    ...NO_FILTERS,
+    customer: searchParams.get("customer") ?? "",
+  }));
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get("payment"));
   const portalRef = useRef<HTMLDivElement>(null);
+  const card = { window, locations, location };
 
   // Keeps ?payment= in the address bar so a payment can be linked to. `window` is the
   // time-window prop here, so the browser globals go through globalThis.
@@ -216,6 +211,8 @@ export function OrdersTable({
     const url = new URL(globalThis.location.href);
     if (selectedId) url.searchParams.set("payment", selectedId);
     else url.searchParams.delete("payment");
+    // The filter now lives in state; clearing it shouldn't come back on reload.
+    url.searchParams.delete("customer");
     if (url.href !== globalThis.location.href) globalThis.history.replaceState(null, "", url);
   }, [selectedId, window]);
 
@@ -254,7 +251,7 @@ export function OrdersTable({
 
   if (!orders || !nowIso) {
     return (
-      <OrdersCard subtitle="All payments" window={window}>
+      <OrdersCard subtitle="All payments" {...card}>
         <p className="py-10 text-center text-sm text-muted-foreground">
           {error ?? "Payments couldn't be loaded right now."}
         </p>
@@ -264,7 +261,11 @@ export function OrdersTable({
 
   const now = new Date(nowIso);
   const days = ORDER_WINDOWS.find((option) => option.key === window)?.days ?? 30;
-  const subtitle = `All payments · ${formatRange(days, now, timeZone)}`;
+  const picked = locations?.find((option) => option.id === location);
+  const scope = picked ? `${picked.label}, ${picked.city}` : locations ? "All locations" : "All payments";
+  const subtitle = `${scope} · ${formatRange(days, now, timeZone)}`;
+  // A payment linked from elsewhere may be outside the window; the picked store still owns it.
+  const selectedLocation = orders.find((order) => order.id === selectedId)?.location?.id ?? location;
   const filtered = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS);
   const total = `${rows.length.toLocaleString()} ${rows.length === 1 ? "payment" : "payments"}`;
 
@@ -286,7 +287,8 @@ export function OrdersTable({
 
   if (orders.length === 0) {
     return (
-      <OrdersCard subtitle={subtitle} total="0 payments" window={window}>
+      <OrdersCard subtitle={subtitle} total="0 payments" {...card}>
+        <FailedLocations names={failedLocations} />
         <p className="py-10 text-center text-sm text-muted-foreground">No payments in this window.</p>
       </OrdersCard>
     );
@@ -305,12 +307,14 @@ export function OrdersTable({
   );
 
   return (
-    <OrdersCard subtitle={subtitle} total={total} window={window}>
+    <OrdersCard subtitle={subtitle} total={total} {...card}>
+      <FailedLocations names={failedLocations} />
       <div className="-mx-4 border-t border-foreground/10">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <ColumnHead label="Date (local)" sort={sort} sortKey="date" onSort={toggleSort} className="pl-6" />
+              {locations && <ColumnHead label="Location" />}
               <ColumnHead label="Payment ID" filter={textFilter("id", "Payment ID")} />
               <ColumnHead label="Method" filter={valueFilter("method", "Method")} />
               <ColumnHead label="Subtotal" sort={sort} sortKey="subtotal" onSort={toggleSort} />
@@ -359,6 +363,14 @@ export function OrdersTable({
                       "—"
                     )}
                   </TableCell>
+                  {locations && (
+                    <TableCell className="px-4">
+                      <div className="font-medium text-foreground/90">{order.location?.label ?? "—"}</div>
+                      {order.location?.city && (
+                        <div className="text-xs text-muted-foreground">{order.location.city}</div>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="px-4 text-foreground/80">
                     <CopyableId value={order.id} label="payment ID" />
                   </TableCell>
@@ -425,6 +437,7 @@ export function OrdersTable({
       <div ref={portalRef} />
       <PaymentDrawer
         paymentId={selectedId}
+        locationId={selectedLocation}
         timeZone={timeZone}
         container={portalRef}
         onClose={() => setSelectedId(null)}

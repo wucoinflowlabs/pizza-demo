@@ -14,7 +14,7 @@ import {
   storeOnboardingStatus,
 } from "@/features/operator/store-status";
 
-export const metadata: Metadata = { title: "Adora customers" };
+export const metadata: Metadata = { title: "Franchises" };
 
 export default async function OperatorPage() {
   const listed = await listApplications();
@@ -51,6 +51,7 @@ export default async function OperatorPage() {
       status,
       label: storeOnboardingLabel(status),
       completedAt: onboardingCompletedAt(application),
+      merchantId: application?.merchantId ?? null,
     };
   });
 

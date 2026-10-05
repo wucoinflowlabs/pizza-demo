@@ -4,6 +4,7 @@ import { AdoraPayActivity } from "@/features/dashboard/components/adora-pay-acti
 import { AdoraPaySignup } from "@/features/dashboard/components/adora-pay-signup";
 import { PaymentsChart } from "@/features/dashboard/components/payments-chart";
 import { RememberMerchantAccount } from "@/features/dashboard/components/remember-merchant-account";
+import { enrolledLocations, getSessionFranchise } from "@/features/dashboard/franchise";
 import { LAMONICA_EMAIL, LAMONICA_PREFILL } from "@/features/dashboard/lamonica";
 import { loadPaymentsSeries } from "@/features/dashboard/load-payments-series";
 import { eventsFromSnapshot, isAdoraPayEnrolled, snapshotFromProgress } from "@/features/dashboard/pay-status";
@@ -18,10 +19,24 @@ import { getCurrentAccountId, getCurrentMerchantEmail } from "@/lib/session";
 export const metadata: Metadata = { title: "Adora Pay" };
 
 export default async function AdoraPayPage({ searchParams }: PageProps<"/dashboard/adora-pay">) {
+  // A franchise owner sees every store's settled payments together. Onboarding
+  // belongs to each store, so none of it is shown here.
+  const franchise = await getSessionFranchise();
+  if (franchise) {
+    const payments = await loadPaymentsSeries({
+      submerchantIds: enrolledLocations(franchise.locations).map((location) => location.submerchantId),
+    });
+    return (
+      <div className="mx-auto w-full max-w-5xl px-4 pt-8">
+        {payments.ok ? <PaymentsChart series={payments.series} /> : <PaymentsChart error={payments.message} />}
+      </div>
+    );
+  }
+
   const email = await getCurrentMerchantEmail();
-  if (!email) redirect("/login");
+  if (!email) redirect("/operator");
   const login = await getMerchantLogin(email);
-  if (!login) redirect("/login");
+  if (!login) redirect("/operator");
   const openApplication = (await searchParams).enroll === "1";
 
   const submerchantId =
@@ -39,7 +54,7 @@ export default async function AdoraPayPage({ searchParams }: PageProps<"/dashboa
     getSubmerchantProgress(submerchantId),
     getOnboardingForm(submerchantId),
     getCurrentAccountId(),
-    loadPaymentsSeries({ submerchantId, loginId: login.id }),
+    loadPaymentsSeries({ submerchantIds: [submerchantId], loginId: login.id }),
   ]);
   const bindAccount = currentAccountId === submerchantId ? null : <RememberMerchantAccount />;
   const paymentsChart = payments.ok ? (

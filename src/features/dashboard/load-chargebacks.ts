@@ -1,24 +1,23 @@
 import "server-only";
+import { listChargebacks } from "@/lib/payments/chargebacks";
 import { PaymentsError } from "@/lib/payments/errors";
-import { listMerchantPayments } from "@/lib/payments/payments";
+import { toChargeback, type Chargeback } from "./chargebacks";
 import { DEFAULT_TIME_ZONE, shopTimeZone } from "./load-payments-series";
-import { ORDER_WINDOWS, toOrder, type Order, type OrderLocation, type OrderWindow } from "./orders";
+import type { OrdersSource } from "./load-orders";
+import { ORDER_WINDOWS, type OrderWindow } from "./orders";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export type OrdersResult =
-  | { ok: true; orders: Order[]; timeZone: string; now: string; failedLocations: string[] }
+export type ChargebacksResult =
+  | { ok: true; chargebacks: Chargeback[]; timeZone: string; now: string; failedLocations: string[] }
   | { ok: false; message: string };
 
-/** One sub-merchant to read payments from. A franchise owner has one per store. */
-export type OrdersSource = { submerchantId: string; location?: OrderLocation };
-
 /**
- * Every payment in the window, whatever its status, newest first. Coinflow has
- * no nested sub-merchants, so each source is its own request with its own
- * sub-merchant header. One store failing leaves the others on screen.
+ * Every chargeback in the window, newest first. Like payments, each source is
+ * its own request with its own sub-merchant header, and one store failing
+ * leaves the others on screen.
  */
-export async function loadOrders({
+export async function loadChargebacks({
   sources,
   loginId,
   window,
@@ -27,14 +26,14 @@ export async function loadOrders({
   /** The shop whose time zone dates are shown in. Omitted for a franchise. */
   loginId?: string;
   window: OrderWindow;
-}): Promise<OrdersResult> {
+}): Promise<ChargebacksResult> {
   try {
     const now = new Date();
     const days = ORDER_WINDOWS.find((option) => option.key === window)?.days ?? 30;
     const range = { since: now.getTime() - days * DAY_MS, until: now.getTime() };
     const [timeZone, results] = await Promise.all([
       loginId ? shopTimeZone(loginId) : DEFAULT_TIME_ZONE,
-      Promise.allSettled(sources.map((source) => listMerchantPayments(source.submerchantId, range))),
+      Promise.allSettled(sources.map((source) => listChargebacks(source.submerchantId, range))),
     ]);
 
     const failures = results.flatMap((result, index) => (result.status === "rejected" ? [index] : []));
@@ -43,26 +42,26 @@ export async function loadOrders({
     }
     for (const index of failures) {
       console.error(
-        `[dashboard] payments for ${sources[index].submerchantId} could not be loaded`,
+        `[dashboard] chargebacks for ${sources[index].submerchantId} could not be loaded`,
         (results[index] as PromiseRejectedResult).reason,
       );
     }
 
-    const orders = results
+    const chargebacks = results
       .flatMap((result, index) =>
         result.status === "fulfilled"
-          ? result.value.map((payment) => ({ ...toOrder(payment), location: sources[index].location }))
+          ? result.value.map((row) => ({ ...toChargeback(row), location: sources[index].location }))
           : [],
       )
-      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      .sort((a, b) => Date.parse(b.loadedAt) - Date.parse(a.loadedAt));
     const failedLocations = failures.map(
       (index) => sources[index].location?.label ?? sources[index].submerchantId,
     );
-    return { ok: true, orders, timeZone, now: now.toISOString(), failedLocations };
+    return { ok: true, chargebacks, timeZone, now: now.toISOString(), failedLocations };
   } catch (err) {
-    console.error("[dashboard] payments list could not be loaded", err);
+    console.error("[dashboard] chargebacks list could not be loaded", err);
     const message =
-      err instanceof PaymentsError ? err.userMessage : "Payments couldn't be loaded right now.";
+      err instanceof PaymentsError ? err.userMessage : "Chargebacks couldn't be loaded right now.";
     return { ok: false, message };
   }
 }

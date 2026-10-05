@@ -2,8 +2,16 @@
 
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRightIcon, CreditCardIcon, MapPinIcon, SearchIcon } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { useFormStatus } from "react-dom";
+import {
+  ChevronRightIcon,
+  CreditCardIcon,
+  Loader2Icon,
+  LogInIcon,
+  MapPinIcon,
+  SearchIcon,
+} from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AdoraCustomer } from "../adora-customers";
+import { signInAsFranchise, signInAsStore } from "../actions";
 import type { AdoraStore } from "../adora-stores";
 import {
   revealApproval,
@@ -29,12 +38,48 @@ export type CustomerStore = AdoraStore & {
   status: StoreOnboardingStatus;
   label: string;
   completedAt: OnboardingCompletedAt;
+  /** Coinflow account for this store, once onboarding has started. */
+  merchantId: string | null;
 };
 
 function brandSummary(stores: CustomerStore[]) {
   if (stores.length === 0) return "No locations";
   const onboarded = stores.filter((store) => store.status === "approved").length;
   return `${onboarded}/${stores.length} onboarded`;
+}
+
+function SignInButton({ primary, label = "Sign in as restaurant" }: { primary: boolean; label?: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="sm" variant={primary ? "default" : "outline"} disabled={pending}>
+      {pending ? (
+        <Loader2Icon data-icon="inline-start" className="animate-spin" />
+      ) : (
+        <LogInIcon data-icon="inline-start" />
+      )}
+      {label}
+    </Button>
+  );
+}
+
+function SignInAsStore({ store }: { store: CustomerStore }) {
+  return (
+    <form action={signInAsStore}>
+      <input type="hidden" name="customerId" value={store.customerId} />
+      <input type="hidden" name="storeId" value={store.id} />
+      {store.merchantId && <input type="hidden" name="merchantId" value={store.merchantId} />}
+      <SignInButton primary={store.status !== "not-started"} />
+    </form>
+  );
+}
+
+function SignInAsFranchise({ customerId }: { customerId: string }) {
+  return (
+    <form action={signInAsFranchise}>
+      <input type="hidden" name="customerId" value={customerId} />
+      <SignInButton primary={false} label="Sign in as franchise owner" />
+    </form>
+  );
 }
 
 function StoreLine({ store }: { store: CustomerStore }) {
@@ -48,7 +93,8 @@ function StoreLine({ store }: { store: CustomerStore }) {
         </div>
       </div>
       <StoreProgress status={store.status} completedAt={store.completedAt} />
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <SignInAsStore store={store} />
         {store.status === "not-started" && (
           <Link
             href={`/operator/new?customer=${store.customerId}&store=${store.id}`}
@@ -162,7 +208,10 @@ export function CustomersTable({
                         </div>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
-                        {brandSummary(customerStores)}
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                          {brandSummary(customerStores)}
+                          {count > 1 && <SignInAsFranchise customerId={customer.id} />}
+                        </div>
                       </TableCell>
                     </TableRow>
                     {open && (

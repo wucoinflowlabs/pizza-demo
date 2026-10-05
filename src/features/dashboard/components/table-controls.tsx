@@ -1,19 +1,37 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Popover } from "@base-ui/react/popover";
-import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon, FunnelIcon, LoaderIcon, SearchIcon, XIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ChevronsUpDownIcon,
+  FunnelIcon,
+  LoaderIcon,
+  MapPinIcon,
+  SearchIcon,
+  XIcon,
+} from "lucide-react";
 import { cn } from "cn";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableHead } from "@/components/ui/table";
+import { ORDER_WINDOWS, type OrderWindow } from "../orders";
+
+/** Shared by the Payments, Chargebacks, and Withdrawals tables. */
 
 export const NONE = "None";
+const ALL_LOCATIONS = "all";
 
-const relative = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });
+/** One store a franchise owner can narrow the table to. */
+export type LocationOption = { id: string; label: string; city: string; enrolled: boolean };
 
 export type Sort<K extends string> = { key: K; dir: "asc" | "desc" };
+
+const relative = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });
 
 /** Relative to the server's clock so the server and client render the same text. */
 export function timeAgo(at: Date, now: Date) {
@@ -24,6 +42,17 @@ export function timeAgo(at: Date, now: Date) {
   if (abs < 86_400) return relative.format(Math.round(seconds / 3600), "hour");
   if (abs < 30 * 86_400) return relative.format(Math.round(seconds / 86_400), "day");
   return relative.format(Math.round(seconds / (30 * 86_400)), "month");
+}
+
+export function formatRange(days: number, now: Date, timeZone: string) {
+  const day = (at: Date, withYear: boolean) =>
+    at.toLocaleDateString("en-US", {
+      timeZone,
+      month: "short",
+      day: "numeric",
+      ...(withYear ? { year: "numeric" } : {}),
+    });
+  return `${day(new Date(now.getTime() - days * 86_400_000), false)} – ${day(now, true)}`;
 }
 
 export const POPUP =
@@ -173,6 +202,91 @@ export function ColumnHead<K extends string>({
   );
 }
 
+/** Keeps the window and location together, so changing one doesn't drop the other. */
+function ordersHref({ window, location }: { window: OrderWindow; location?: string }) {
+  const params = new URLSearchParams({ window });
+  if (location) params.set("location", location);
+  return `?${params.toString()}`;
+}
+
+export function WindowToggle({ value, location }: { value: OrderWindow; location?: string }) {
+  return (
+    <nav
+      aria-label="Time window"
+      className="inline-flex w-fit rounded-lg bg-muted p-1 ring-1 ring-foreground/5"
+    >
+      {ORDER_WINDOWS.map((option) => (
+        <Link
+          key={option.key}
+          href={ordersHref({ window: option.key, location })}
+          scroll={false}
+          aria-current={value === option.key ? "page" : undefined}
+          className={cn(
+            "rounded-md px-4 py-1.5 text-sm transition-colors",
+            value === option.key
+              ? "bg-background font-medium text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {option.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+/** Picking a store reloads the page so only that store's sub-merchant is asked for data. */
+export function LocationPicker({
+  locations,
+  value,
+  window,
+}: {
+  locations: LocationOption[];
+  value?: string;
+  window: OrderWindow;
+}) {
+  const router = useRouter();
+  const items = [
+    { value: ALL_LOCATIONS, label: "All locations" },
+    ...locations.map((location) => ({ value: location.id, label: `${location.label}, ${location.city}` })),
+  ];
+  return (
+    <Select
+      items={items}
+      value={value ?? ALL_LOCATIONS}
+      onValueChange={(next) => {
+        if (!next) return;
+        const location = next === ALL_LOCATIONS ? undefined : String(next);
+        router.push(ordersHref({ window, location }), { scroll: false });
+      }}
+    >
+      <SelectTrigger aria-label="Location" className="h-10 min-w-56 bg-background">
+        <MapPinIcon className="text-muted-foreground" />
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL_LOCATIONS}>All locations</SelectItem>
+        {locations.map((location) => (
+          <SelectItem key={location.id} value={location.id} disabled={!location.enrolled}>
+            {location.label}
+            <span className="text-muted-foreground">
+              {location.enrolled ? location.city : "Not enrolled"}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+export function FailedLocations({ names, noun = "Payments" }: { names: string[]; noun?: string }) {
+  if (names.length === 0) return null;
+  return (
+    <p className="text-sm text-muted-foreground">
+      {noun} couldn&apos;t be loaded for {names.join(", ")}. Other locations are shown.
+    </p>
+  );
+}
 
 /**
  * Writes `?search=` on Enter so the server runs the provider's search.

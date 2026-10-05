@@ -12,9 +12,6 @@ export function HeaderCorner() {
 
   return (
     <div className="flex items-center gap-2">
-      <Link href="/login" className={buttonVariants({ size: "sm" })}>
-        Merchant Login
-      </Link>
       <Link
         href="/operator"
         className={cn(

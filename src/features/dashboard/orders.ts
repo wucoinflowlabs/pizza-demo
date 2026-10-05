@@ -36,7 +36,11 @@ export type Order = {
   code?: string;
   protection?: string;
   threeDs?: string;
+  /** Set on a franchise owner's view, where payments come from several stores. */
+  location?: OrderLocation;
 };
+
+export type OrderLocation = { id: string; label: string; city?: string };
 
 type Fields = Record<string, unknown>;
 

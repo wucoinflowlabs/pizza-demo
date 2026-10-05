@@ -13,6 +13,7 @@ import {
   MenuIcon,
   MonitorIcon,
   ReceiptTextIcon,
+  ShieldAlertIcon,
   TruckIcon,
   UsersRoundIcon,
   WalletCardsIcon,
@@ -124,6 +125,15 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         onNavigate={onNavigate}
         accent
       />
+      <NavItem
+        href="/dashboard/adora-pay/chargebacks"
+        label="Chargebacks"
+        icon={ShieldAlertIcon}
+        // Includes the dispute screen under it.
+        active={pathname.startsWith("/dashboard/adora-pay/chargebacks")}
+        onNavigate={onNavigate}
+        accent
+      />
       <SectionLabel>Withdrawals</SectionLabel>
       <NavItem
         href="/dashboard/adora-pay/withdraws"
@@ -190,12 +200,14 @@ function SidebarBody({
   logo,
   email,
   name,
+  subtitle,
   shopLogo,
   onNavigate,
 }: {
   logo: ReactNode;
   email: string;
   name?: string | null;
+  subtitle?: string;
   shopLogo?: string;
   onNavigate?: () => void;
 }) {
@@ -224,7 +236,7 @@ function SidebarBody({
               {shop || email}
             </span>
             {shop ? (
-              <span className="block truncate text-xs text-muted-foreground">{email}</span>
+              <span className="block truncate text-xs text-muted-foreground">{subtitle ?? email}</span>
             ) : null}
           </span>
         </div>
@@ -236,7 +248,7 @@ function SidebarBody({
             className="h-8 w-full text-muted-foreground hover:bg-shop-surface hover:text-shop-ink"
           >
             <LogOutIcon />
-            Sign out
+            Switch restaurant
           </Button>
         </form>
       </div>
@@ -248,6 +260,7 @@ export function DashboardShell({
   logo,
   email,
   name,
+  subtitle,
   shopLogo,
   theme,
   children,
@@ -255,6 +268,8 @@ export function DashboardShell({
   logo: ReactNode;
   email: string;
   name?: string | null;
+  /** Shown under the name in place of the email, e.g. for a franchise owner. */
+  subtitle?: string;
   shopLogo?: string;
   theme: ShopTheme;
   children: ReactNode;
@@ -270,7 +285,7 @@ export function DashboardShell({
   return (
     <div className="flex min-h-full flex-1" style={shopThemeStyle(theme)}>
       <aside className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-shop-ink/10 bg-gradient-to-b from-shop-surface via-shop-surface to-background md:flex">
-        <SidebarBody logo={logo} email={email} name={name} shopLogo={shopLogo} />
+        <SidebarBody logo={logo} email={email} name={name} subtitle={subtitle} shopLogo={shopLogo} />
       </aside>
       {open && (
         <button
@@ -290,6 +305,7 @@ export function DashboardShell({
           logo={logo}
           email={email}
           name={name}
+          subtitle={subtitle}
           shopLogo={shopLogo}
           onNavigate={() => setOpen(false)}
         />
