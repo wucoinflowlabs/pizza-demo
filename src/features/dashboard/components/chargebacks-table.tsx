@@ -149,7 +149,7 @@ function ChargebacksCard({
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <WindowToggle value={window} location={location} />
-          {locations && <LocationPicker locations={locations} value={location} window={window} />}
+          {locations && <LocationPicker locations={locations} value={location} />}
           {search}
         </div>
         {children}

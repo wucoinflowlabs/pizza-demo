@@ -143,6 +143,109 @@ export type RefundQuote = {
   adjustment?: CurrencyCents;
 };
 
+export type AvailabilityStatus = "Functional" | "Blocked" | "Override";
+
+export type VerificationStatus = "pending" | "partial-approval" | "approved" | "rejected" | "expired";
+
+export type WithdrawerVerification = {
+  reference?: string;
+  status?: VerificationStatus;
+  vendor?: string;
+  rejectionReasons?: string[];
+};
+
+/** A row of `GET /merchant/withdrawers`. `merchant` is the full merchant document, so never forward it. */
+export type CoinflowWithdrawer = {
+  _id: string;
+  wallet: string;
+  blockchain?: string;
+  email?: string;
+  availability?: { status?: AvailabilityStatus; reason?: string; updatedAt?: string };
+  verification?: WithdrawerVerification;
+  currency?: string;
+  country?: string;
+  merchant?: { merchantId?: string } | string;
+  createdAt?: string;
+  user?: boolean;
+  business?: boolean;
+};
+
+export type WithdrawSpeed =
+  | "asap"
+  | "same_day"
+  | "standard"
+  | "card"
+  | "iban"
+  | "pix"
+  | "eft"
+  | "venmo"
+  | "paypal"
+  | "wire"
+  | "interac"
+  | "swift"
+  | "crypto";
+
+type WithdrawFees = { fees?: CurrencyCents; gasFees?: CurrencyCents; swapFees?: CurrencyCents; customFees?: CurrencyCents };
+
+/** A row of `GET /merchant/withdraws`. */
+export type CoinflowWithdraw = {
+  _id: string;
+  transferId: string;
+  wallet?: string;
+  blockchain?: string;
+  transaction?: string;
+  accountId?: string;
+  amount: CurrencyCents;
+  usdToForeignExchangeRate?: number;
+  userPaidFees?: WithdrawFees;
+  merchantPaidFees?: WithdrawFees;
+  status: string;
+  returnStatus?: string;
+  expectedDeliveryDate?: string;
+  merchant?: { merchantId?: string };
+  createdAt: string;
+  speed?: WithdrawSpeed;
+  userId?: string;
+  detailMessage?: string;
+  isFirstParty?: boolean;
+  idempotencyKey?: string;
+};
+
+/** `GET /merchant/withdraws/{transferId}/enhanced`. Card, Venmo and PayPal only. */
+export type WithdrawEnhancedInfo =
+  | { speed: "card"; info: { last4?: string; bin?: string; type?: string; bankName?: string; country?: string } }
+  | { speed: "paypal" | "venmo"; info: { email?: string; phoneNumber?: string } };
+
+type PurseMethod = { alias?: string; token: string; isDeleted?: boolean };
+
+/** `GET /merchant/withdrawer/{id}/profile`. */
+export type CoinflowCustomerData = {
+  emails?: string[];
+  kycName?: string;
+  payouts?: CoinflowWithdraw[];
+  payments?: CoinflowPayment[];
+  verifications?: WithdrawerVerification[];
+  purses?: {
+    keys?: { referenceId: string; merchantId: string }[];
+    accounts?: (PurseMethod & { last4?: string })[];
+    cards?: (PurseMethod & { last4?: string; type?: string; createdAt?: string })[];
+    ibans?: (PurseMethod & { last4?: string })[];
+    pixes?: PurseMethod[];
+    venmo?: PurseMethod;
+    paypal?: PurseMethod;
+    interac?: PurseMethod;
+  }[];
+};
+
+/** `GET /merchant/withdrawer/{id}/audit-logs`. */
+export type WithdrawerAuditLog = {
+  editor?: string;
+  editorType?: string;
+  ip?: string;
+  createdAt?: string;
+  modifications?: unknown;
+};
+
 /** One row of `GET /merchant/chargebacks`, limited to the fields the dashboard reads. */
 export type CoinflowChargeback = {
   _id: string;

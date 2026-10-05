@@ -1,10 +1,19 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Popover } from "@base-ui/react/popover";
-import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon, FunnelIcon, MapPinIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ChevronsUpDownIcon,
+  FunnelIcon,
+  LoaderIcon,
+  MapPinIcon,
+  SearchIcon,
+  XIcon,
+} from "lucide-react";
 import { cn } from "cn";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -12,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TableHead } from "@/components/ui/table";
 import { ORDER_WINDOWS, type OrderWindow } from "../orders";
 
-/** Shared by the Payments and Chargebacks tables. */
+/** Shared by the Payments, Chargebacks, and Withdrawals tables. */
 
 export const NONE = "None";
 const ALL_LOCATIONS = "all";
@@ -230,13 +239,13 @@ export function WindowToggle({ value, location }: { value: OrderWindow; location
 export function LocationPicker({
   locations,
   value,
-  window,
 }: {
   locations: LocationOption[];
   value?: string;
-  window: OrderWindow;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const items = [
     { value: ALL_LOCATIONS, label: "All locations" },
     ...locations.map((location) => ({ value: location.id, label: `${location.label}, ${location.city}` })),
@@ -247,8 +256,11 @@ export function LocationPicker({
       value={value ?? ALL_LOCATIONS}
       onValueChange={(next) => {
         if (!next) return;
-        const location = next === ALL_LOCATIONS ? undefined : String(next);
-        router.push(ordersHref({ window, location }), { scroll: false });
+        const params = new URLSearchParams(searchParams);
+        if (next === ALL_LOCATIONS) params.delete("location");
+        else params.set("location", String(next));
+        const query = params.toString();
+        router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
       }}
     >
       <SelectTrigger aria-label="Location" className="h-10 min-w-56 bg-background">
@@ -276,5 +288,63 @@ export function FailedLocations({ names, noun = "Payments" }: { names: string[];
     <p className="text-sm text-muted-foreground">
       {noun} couldn&apos;t be loaded for {names.join(", ")}. Other locations are shown.
     </p>
+  );
+}
+
+/**
+ * Writes `?search=` on Enter so the server runs the provider's search.
+ * The provider matches exact values, so there's no search-as-you-type.
+ */
+export function ServerSearch({ value, placeholder }: { value: string; placeholder: string }) {
+  const [draft, setDraft] = useState(value);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const submit = (next: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (next.trim()) params.set("search", next.trim());
+    else params.delete("search");
+    const query = params.toString();
+    startTransition(() => router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false }));
+  };
+
+  return (
+    <form
+      role="search"
+      className="relative w-full sm:max-w-md"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit(draft);
+      }}
+    >
+      {pending ? (
+        <LoaderIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+      ) : (
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      )}
+      <Input
+        type="search"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        className="h-10 pr-9 pl-9"
+      />
+      {draft && (
+        <button
+          type="button"
+          aria-label="Clear search"
+          onClick={() => {
+            setDraft("");
+            submit("");
+          }}
+          className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+        >
+          <XIcon className="size-4" />
+        </button>
+      )}
+    </form>
   );
 }

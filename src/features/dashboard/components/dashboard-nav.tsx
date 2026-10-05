@@ -15,6 +15,8 @@ import {
   ReceiptTextIcon,
   ShieldAlertIcon,
   TruckIcon,
+  UsersRoundIcon,
+  WalletCardsIcon,
   XIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -129,6 +131,23 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         icon={ShieldAlertIcon}
         // Includes the dispute screen under it.
         active={pathname.startsWith("/dashboard/adora-pay/chargebacks")}
+        onNavigate={onNavigate}
+        accent
+      />
+      <SectionLabel>Withdrawals</SectionLabel>
+      <NavItem
+        href="/dashboard/adora-pay/withdraws"
+        label="Withdraws"
+        icon={WalletCardsIcon}
+        active={pathname === "/dashboard/adora-pay/withdraws"}
+        onNavigate={onNavigate}
+        accent
+      />
+      <NavItem
+        href="/dashboard/adora-pay/withdrawers"
+        label="Staff"
+        icon={UsersRoundIcon}
+        active={pathname === "/dashboard/adora-pay/withdrawers"}
         onNavigate={onNavigate}
         accent
       />

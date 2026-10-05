@@ -91,7 +91,7 @@ export function MerchantHome({ profile }: { profile: MerchantHomeProfile }) {
             </div>
 
             <Link
-              href="/dashboard/adora-pay"
+              href={profile.payConnected ? "/dashboard/adora-pay" : "/dashboard/adora-pay?enroll=1"}
               className="group relative flex flex-col justify-between gap-6 overflow-hidden rounded-2xl bg-white/80 p-5 text-shop-ink shadow-[0_18px_40px_-28px_rgba(13,61,133,0.55)] ring-1 ring-white/40 backdrop-blur-md transition duration-200 hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-[0_22px_44px_-24px_rgba(68,126,236,0.45)]"
             >
               <span

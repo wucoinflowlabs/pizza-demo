@@ -52,13 +52,18 @@ export function AdoraPaySignup({
   prefill,
   initialProgress,
   backdrop,
+  openApplication = false,
 }: {
   prefill: FormValues;
   initialProgress?: SubmerchantProgress;
   /** Shown behind the flow. Defaults to the marketing carousel. */
   backdrop?: ReactNode;
+  /** Opens the onboarding application instead of the marketing page. */
+  openApplication?: boolean;
 }) {
-  const [stage, setStage] = useState<Stage>(() => stageFor(initialProgress));
+  const [stage, setStage] = useState<Stage>(() =>
+    openApplication && !initialProgress ? "form" : stageFor(initialProgress),
+  );
   const [progress, setProgress] = useState(initialProgress);
   const [values, setValues] = useState(prefill);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -130,7 +135,7 @@ export function AdoraPaySignup({
           <Button
             type="button"
             className="h-14 gap-2.5 rounded-full bg-white px-7 text-base font-semibold text-shop-ink shadow-[0_18px_40px_-16px_rgba(0,0,0,0.55)] transition duration-200 hover:scale-105 hover:bg-white hover:shadow-[0_24px_48px_-14px_rgba(0,0,0,0.6)] active:scale-[0.98] sm:h-20 sm:gap-3 sm:px-10 sm:text-xl"
-            onClick={() => setStage("intro")}
+            onClick={() => setStage("form")}
           >
             Enroll Now
             <ArrowRightIcon className="size-5 transition-transform duration-200 group-hover/button:translate-x-1 sm:size-6" />

@@ -62,13 +62,15 @@ export const FIXED_FIELDS = {
   processingStatements: "Collected by Adora",
 } satisfies FormValues;
 
-/** Answers Adora already knows. Method checkboxes are intentionally absent. */
+/** Answers Adora already knows. Every pay-in and payout method starts checked. */
 export const ADORA_PREFILL: FormValues = {
   acceptedPaymentsBefore: "yes",
   currentRunway: ">18 months/profitable",
   payinsMonthlyVolume: { currency: "usd", amount: 10_000 },
   payoutsMonthlyVolume: { currency: "usd", amount: 10_000 },
   cardNotPresentPercent: "40",
+  payinMethods: PAYIN_METHOD_OPTIONS.map((option) => option.value).join(","),
+  payoutMethods: PAYOUT_METHOD_OPTIONS.map((option) => option.value).join(","),
 };
 
 /** UI-only. Drives whether the website question is shown, then stripped before Coinflow. */
