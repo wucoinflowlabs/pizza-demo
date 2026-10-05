@@ -13,7 +13,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
     const { customer } = franchise;
     return (
       <DashboardShell
-        logo={<Logo />}
+        logo={<Logo coinflow={false} />}
         email={customer.name}
         name={customer.name}
         subtitle={`Franchise owner · ${franchiseSummary(franchise)}`}
@@ -34,7 +34,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
 
   return (
     <DashboardShell
-      logo={<Logo />}
+      logo={<Logo coinflow={false} />}
       email={login.email}
       name={login.name}
       shopLogo={shopLogo({ name: login.name, email: login.email })}

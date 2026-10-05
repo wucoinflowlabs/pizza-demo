@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { WithdrawRange } from "../withdraw-range";
 import type { WithdrawRow } from "../withdrawals";
 import { CopyableId, humanize } from "./payment-pills";
-import { ColumnHead, ServerSearch, ValueFilter, timeAgo, type Sort } from "./table-controls";
+import { ColumnHead, FailedLocations, LocationPicker, ServerSearch, ValueFilter, timeAgo, type LocationOption, type Sort } from "./table-controls";
 import { WithdrawDrawer } from "./withdraw-drawer";
 import { SpeedPill, WithdrawStatusPill, WithdrawerId, compactDate, money, speedLabel } from "./withdrawal-pills";
 
@@ -130,6 +130,9 @@ function WithdrawsCard({
   onDateFormat,
   total,
   onDownload,
+  locations,
+  location,
+  failedLocations = [],
   children,
 }: {
   search: string;
@@ -138,22 +141,27 @@ function WithdrawsCard({
   onDateFormat: (format: DateFormat) => void;
   total?: string;
   onDownload?: () => void;
+  locations?: LocationOption[];
+  location?: string;
+  failedLocations?: string[];
   children: ReactNode;
 }) {
+  const picked = locations?.find((option) => option.id === location);
+  const zone = dateFormat === "utc" ? "UTC" : picked ? picked.label + ", " + picked.city : locations ? "store local time" : "your shop's local time";
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-shop-ink">Withdraws</CardTitle>
-        <CardDescription>
-          Withdrawal dates displayed in {dateFormat === "utc" ? "UTC" : "your shop's local time"}
-        </CardDescription>
+        <CardDescription>Withdrawal dates displayed in {zone}</CardDescription>
         {total !== undefined && (
           <CardAction className="font-heading text-2xl font-semibold text-shop-ink sm:text-3xl">{total}</CardAction>
         )}
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        <FailedLocations names={failedLocations} noun="Withdrawals" />
         <div className="flex flex-wrap items-center gap-2">
           <ServerSearch value={search} placeholder="Search by transfer ID, signature, or user ID…" />
+          {locations && <LocationPicker locations={locations} value={location} />}
           <DateRangeFilter range={range} searching={search !== ""} />
           <Select value={dateFormat} onValueChange={(value) => onDateFormat(value as DateFormat)}>
             <SelectTrigger aria-label="Date format" className="h-10 w-32">
@@ -192,6 +200,9 @@ export function WithdrawsTable({
   timeZone,
   withdraws,
   now: nowIso,
+  locations,
+  location,
+  failedLocations = [],
   error,
 }: {
   search: string;
@@ -199,6 +210,12 @@ export function WithdrawsTable({
   timeZone: string;
   withdraws?: WithdrawRow[];
   now?: string;
+  /** Set for a franchise owner: adds the location picker and column. */
+  locations?: LocationOption[];
+  /** The picked store, or undefined for all locations. */
+  location?: string;
+  /** Stores whose list failed. The others are shown. */
+  failedLocations?: string[];
   error?: string;
 }) {
   const [sort, setSort] = useState<Sort<SortKey>>({ key: "date", dir: "desc" });
@@ -239,7 +256,7 @@ export function WithdrawsTable({
       );
   }, [withdraws, filters, sort]);
 
-  const card = { search, range, dateFormat, onDateFormat: setDateFormat };
+  const card = { search, range, dateFormat, onDateFormat: setDateFormat, locations, location, failedLocations };
 
   if (!withdraws || !nowIso) {
     return (
@@ -304,6 +321,7 @@ export function WithdrawsTable({
               <ColumnHead label="Transfer ID" />
               <ColumnHead label="Account ID" />
               <ColumnHead label="Withdrawer" />
+              {locations && <ColumnHead label="Location" />}
               <ColumnHead label="Amount" sort={sort} sortKey="amount" onSort={toggleSort} />
               <ColumnHead label="Status" filter={valueFilter("status", "Status")} />
               <ColumnHead label="Speed" filter={valueFilter("speed", "Speed")} />
@@ -341,6 +359,20 @@ export function WithdrawsTable({
                   <TableCell className="px-4 text-foreground/80">
                     <WithdrawerId value={row.wallet} isUser={row.isUser} />
                   </TableCell>
+                  {locations && (
+                    <TableCell className="px-4 text-foreground/80">
+                      {row.location ? (
+                        <>
+                          <div className="font-medium text-foreground/90">{row.location.label}</div>
+                          {row.location.city && (
+                            <div className="text-xs text-muted-foreground">{row.location.city}</div>
+                          )}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="px-4 text-foreground/80 tabular-nums">
                     {money(row.amountCents, row.currency)}
                   </TableCell>

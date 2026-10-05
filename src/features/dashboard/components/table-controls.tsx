@@ -239,13 +239,13 @@ export function WindowToggle({ value, location }: { value: OrderWindow; location
 export function LocationPicker({
   locations,
   value,
-  window,
 }: {
   locations: LocationOption[];
   value?: string;
-  window: OrderWindow;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const items = [
     { value: ALL_LOCATIONS, label: "All locations" },
     ...locations.map((location) => ({ value: location.id, label: `${location.label}, ${location.city}` })),
@@ -256,8 +256,11 @@ export function LocationPicker({
       value={value ?? ALL_LOCATIONS}
       onValueChange={(next) => {
         if (!next) return;
-        const location = next === ALL_LOCATIONS ? undefined : String(next);
-        router.push(ordersHref({ window, location }), { scroll: false });
+        const params = new URLSearchParams(searchParams);
+        if (next === ALL_LOCATIONS) params.delete("location");
+        else params.set("location", String(next));
+        const query = params.toString();
+        router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
       }}
     >
       <SelectTrigger aria-label="Location" className="h-10 min-w-56 bg-background">

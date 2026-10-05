@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import type { WithdrawerRow } from "../withdrawals";
-import { ColumnHead, ServerSearch, ValueFilter, type Sort } from "./table-controls";
+import { ColumnHead, FailedLocations, LocationPicker, ServerSearch, ValueFilter, type LocationOption, type Sort } from "./table-controls";
 import {
   BlockedPill,
   CopyText,
@@ -26,18 +26,38 @@ const NO_FILTERS: Filters = { blocked: [], status: [] };
 
 const blockedLabel = (row: WithdrawerRow) => (row.blocked ? "Blocked" : "Functional");
 
-function WithdrawersCard({ search, total, children }: { search: string; total?: string; children: ReactNode }) {
+function WithdrawersCard({
+  search,
+  total,
+  locations,
+  location,
+  failedLocations = [],
+  children,
+}: {
+  search: string;
+  total?: string;
+  locations?: LocationOption[];
+  location?: string;
+  failedLocations?: string[];
+  children: ReactNode;
+}) {
+  const picked = locations?.find((option) => option.id === location);
+  const scope = picked ? `${picked.label}, ${picked.city}` : locations ? "All locations" : "View staff and their information";
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold text-shop-ink">Withdrawers</CardTitle>
-        <CardDescription>View withdrawers and their information</CardDescription>
+        <CardTitle className="text-lg font-semibold text-shop-ink">Staff</CardTitle>
+        <CardDescription>{scope}</CardDescription>
         {total !== undefined && (
           <CardAction className="font-heading text-2xl font-semibold text-shop-ink sm:text-3xl">{total}</CardAction>
         )}
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <ServerSearch value={search} placeholder="Search by email, user ID, or verification reference…" />
+        <div className="flex flex-wrap items-center gap-2">
+          <ServerSearch value={search} placeholder="Search by email, user ID, or verification reference…" />
+          {locations && <LocationPicker locations={locations} value={location} />}
+        </div>
+        <FailedLocations names={failedLocations} noun="Staff" />
         {children}
       </CardContent>
     </Card>
@@ -48,11 +68,23 @@ export function WithdrawersTable({
   search,
   withdrawers,
   timeZone,
+  showMerchant = false,
+  locations,
+  location,
+  failedLocations = [],
   error,
 }: {
   search: string;
   withdrawers?: WithdrawerRow[];
   timeZone: string;
+  /** Only franchise owners see which store a withdrawer belongs to. */
+  showMerchant?: boolean;
+  /** Set for a franchise owner: adds the location picker and column. */
+  locations?: LocationOption[];
+  /** The picked store, or undefined for all locations. */
+  location?: string;
+  /** Stores whose list failed. The others are shown. */
+  failedLocations?: string[];
   error?: string;
 }) {
   const [sort, setSort] = useState<Sort<"created">>({ key: "created", dir: "desc" });
@@ -90,9 +122,9 @@ export function WithdrawersTable({
 
   if (!withdrawers) {
     return (
-      <WithdrawersCard search={search}>
+      <WithdrawersCard search={search} locations={locations} location={location} failedLocations={failedLocations}>
         <p className="py-10 text-center text-sm text-muted-foreground">
-          {error ?? "Withdrawers couldn't be loaded right now."}
+          {error ?? "Staff couldn't be loaded right now."}
         </p>
       </WithdrawersCard>
     );
@@ -100,16 +132,16 @@ export function WithdrawersTable({
 
   if (withdrawers.length === 0) {
     return (
-      <WithdrawersCard search={search} total="0 withdrawers">
+      <WithdrawersCard search={search} total="0 staff" locations={locations} location={location} failedLocations={failedLocations}>
         <p className="py-10 text-center text-sm text-muted-foreground">
-          {search ? `No withdrawer matches “${search}”.` : "No withdrawers yet."}
+          {search ? `No staff matches “${search}”.` : "No staff yet."}
         </p>
       </WithdrawersCard>
     );
   }
 
   const filtered = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS);
-  const total = `${rows.length.toLocaleString()} ${rows.length === 1 ? "withdrawer" : "withdrawers"}`;
+  const total = `${rows.length.toLocaleString()} staff`;
   const setFilter = (column: keyof Filters, value: string[]) => {
     setFilters((current) => ({ ...current, [column]: value }));
     setLimit(PAGE_SIZE);
@@ -134,7 +166,7 @@ export function WithdrawersTable({
   const selected = index >= 0 ? rows[index] : withdrawers.find((row) => row.id === selectedId);
 
   return (
-    <WithdrawersCard search={search} total={total}>
+    <WithdrawersCard search={search} total={total} locations={locations} location={location} failedLocations={failedLocations}>
       <div className="-mx-4 border-t border-foreground/10">
         <Table>
           <TableHeader>
@@ -146,7 +178,9 @@ export function WithdrawersTable({
                 onSort={() => setSort((current) => ({ key: "created", dir: current.dir === "desc" ? "asc" : "desc" }))}
                 className="pl-6"
               />
-              <ColumnHead label="Merchant" />
+              {showMerchant && <ColumnHead label="Merchant" />}
+              {locations && <ColumnHead label="Location" />}
+              <ColumnHead label="Name" />
               <ColumnHead label="IDs" />
               <ColumnHead label="Email" />
               <ColumnHead label="Currency" />
@@ -166,14 +200,33 @@ export function WithdrawersTable({
                 onKeyDown={(event) => openOnKey(event, row.id)}
                 className="cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-none"
               >
-                <TableCell className="py-5 pl-6 text-foreground/80 tabular-nums">
+                <TableCell className="py-3 pl-6 text-foreground/80 tabular-nums">
                   {compactDate(row.createdAt, timeZone)}
                 </TableCell>
-                <TableCell className="px-4 text-foreground/80">{row.merchantId ?? "—"}</TableCell>
+                {showMerchant && (
+                  <TableCell className="px-4 text-foreground/80">{row.merchantId ?? "—"}</TableCell>
+                )}
+                {locations && (
+                  <TableCell className="px-4 text-foreground/80">
+                    {row.location ? (
+                      <>
+                        <div className="font-medium text-foreground/90">{row.location.label}</div>
+                        {row.location.city && (
+                          <div className="text-xs text-muted-foreground">{row.location.city}</div>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                )}
+                <TableCell className="px-4 font-medium text-foreground">
+                  {row.name ?? <span className="text-muted-foreground">—</span>}
+                </TableCell>
                 <TableCell className="px-4 text-foreground/80">
                   <WithdrawerId value={row.wallet} isUser={row.isUser} />
                 </TableCell>
-                <TableCell className="max-w-56 px-4 text-foreground/80">
+                <TableCell className="max-w-56 px-4 text-[11px] text-foreground/80">
                   <CopyText value={row.email} label="email" />
                 </TableCell>
                 <TableCell className="px-4">
@@ -185,10 +238,10 @@ export function WithdrawersTable({
                 <TableCell className="px-4">
                   <VerificationPill status={row.verification.status} reasons={row.verification.rejectionReasons} />
                 </TableCell>
-                <TableCell className="pr-6 text-foreground/80">
+                <TableCell className="pr-6">
                   {row.verification.reference ? (
-                    <span title={row.verification.reference}>
-                      <CopyText value={shortKey(row.verification.reference)} label="verification reference" />
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      <CopyText value={shortKey(row.verification.reference)} copyValue={row.verification.reference} label="verification reference" mono />
                     </span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
@@ -200,7 +253,7 @@ export function WithdrawersTable({
         </Table>
         {rows.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-10 text-sm text-muted-foreground">
-            No withdrawers match these filters.
+            No staff match these filters.
             <Button type="button" variant="outline" size="sm" onClick={() => setFilters(NO_FILTERS)}>
               Clear filters
             </Button>
@@ -231,6 +284,7 @@ export function WithdrawersTable({
       <WithdrawerDrawer
         withdrawer={selected ?? null}
         timeZone={timeZone}
+        showMerchant={showMerchant}
         container={portalRef}
         onClose={() => setSelectedId(null)}
         onPrevious={index > 0 ? () => setSelectedId(rows[index - 1].id) : undefined}

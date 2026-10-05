@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { brand } from "@/config/brand";
 
-export function Logo({ className }: { className?: string }) {
+export function Logo({ className, coinflow = true }: { className?: string; coinflow?: boolean }) {
   return (
     <span className={`inline-flex items-center gap-2.5 ${className ?? ""}`}>
       <span className="inline-flex items-center gap-2">
@@ -10,17 +10,21 @@ export function Logo({ className }: { className?: string }) {
           Adora
         </span>
       </span>
-      <span aria-hidden className="text-sm font-medium text-muted-foreground">
-        ×
-      </span>
-      <Image
-        src={brand.logos.coinflow}
-        alt="Coinflow"
-        width={528}
-        height={116}
-        className="h-5 w-auto"
-        priority
-      />
+      {coinflow ? (
+        <>
+          <span aria-hidden className="text-sm font-medium text-muted-foreground">
+            ×
+          </span>
+          <Image
+            src={brand.logos.coinflow}
+            alt="Coinflow"
+            width={528}
+            height={116}
+            className="h-5 w-auto"
+            priority
+          />
+        </>
+      ) : null}
     </span>
   );
 }

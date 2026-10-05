@@ -1,3 +1,4 @@
+import type { OrderLocation } from "./orders";
 import type {
   CoinflowCustomerData,
   CoinflowWithdraw,
@@ -20,6 +21,10 @@ export type WithdrawerRow = {
   id: string;
   createdAt?: string;
   merchantId?: string;
+  /** From `kycName` on the withdrawer's profile. Not in the list payload. */
+  name?: string;
+  /** The store the withdrawer belongs to in a franchise view. */
+  location?: OrderLocation;
   wallet: string;
   /** Registered by user id rather than a blockchain wallet. */
   isUser: boolean;
@@ -65,6 +70,8 @@ export type WithdrawRow = {
   id: string;
   createdAt: string;
   merchantId?: string;
+  /** The store the withdrawal belongs to in a franchise view. */
+  location?: OrderLocation;
   accountId?: string;
   wallet?: string;
   isUser: boolean;
@@ -165,6 +172,7 @@ export type AuditEntry = {
 
 /** Everything the withdrawer drawer shows beyond the table row. */
 export type WithdrawerProfile = {
+  name?: string;
   payouts: WithdrawRow[];
   paymentsCount: number;
   methodGroups: PayoutMethodGroup[];
@@ -257,6 +265,7 @@ export function toWithdrawerProfile(data: CoinflowCustomerData, auditLogs: Withd
   const groups = methodGroups(data);
   const referenceKeys = (data.purses ?? []).flatMap((purse) => purse.keys ?? []);
   return {
+    name: data.kycName,
     payouts: (data.payouts ?? [])
       .map(toWithdrawRow)
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),

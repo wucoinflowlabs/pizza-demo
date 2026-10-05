@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "cn";
 import type { VerificationStatus, WithdrawSpeed } from "@/lib/payments/types";
-import { CopyableId, Pill, humanize, useCopy } from "./payment-pills";
+import { CopyableId, Pill, humanize, shortId, useCopy } from "./payment-pills";
 
 const RETURN_LABELS: Record<string, string> = {
   pending_return: "Returning…",
@@ -130,14 +130,25 @@ export function CurrencyChip({ currency }: { currency: string }) {
   return <Pill tone={known?.tone ?? "gray"} icon={known?.icon}>{currency}</Pill>;
 }
 
-/** A withdrawer's id: a user id registered by the merchant, or a blockchain wallet. */
+/** A withdrawer's id: a user id or wallet, as a rounded chip that copies on click. */
 export function WithdrawerId({ value, isUser }: { value?: string; isUser: boolean }) {
+  const { copied, copy } = useCopy();
+  if (!value) return <span className="text-muted-foreground">—</span>;
   const Icon = isUser ? UserRoundIcon : WalletIcon;
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <button
+      type="button"
+      title={value}
+      onClick={(event) => {
+        event.stopPropagation();
+        copy(value);
+      }}
+      className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-[11px] font-medium ring-1 ring-foreground/10 ring-inset transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-shop-accent focus-visible:outline-none"
+    >
       <Icon className="size-3.5 shrink-0 fill-current text-foreground/60" />
-      <CopyableId value={value} label="withdrawer ID" />
-    </span>
+      <span className="truncate tabular-nums">{shortId(value)}</span>
+      {copied && <CheckIcon className="size-3 text-emerald-600" />}
+    </button>
   );
 }
 
@@ -151,19 +162,31 @@ export function shortKey(value: string) {
 }
 
 /** Full text with a copy button, truncated to its column. */
-export function CopyText({ value, label, mono }: { value?: string; label: string; mono?: boolean }) {
+export function CopyText({
+  value,
+  label,
+  mono,
+  copyValue,
+}: {
+  value?: string;
+  label: string;
+  mono?: boolean;
+  /** Overrides what gets copied. Useful when the shown value is a shortened form. */
+  copyValue?: string;
+}) {
   const { copied, copy } = useCopy();
   if (!value) return <span className="text-muted-foreground">—</span>;
+  const target = copyValue ?? value;
   return (
     <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
-      <span title={value} className={cn("truncate", mono && "font-mono text-xs")}>
+      <span title={target} className={cn("truncate", mono && "font-mono text-xs")}>
         {value}
       </span>
       <button
         type="button"
         onClick={(event) => {
           event.stopPropagation();
-          copy(value);
+          copy(target);
         }}
         aria-label={`Copy ${label}`}
         className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-shop-accent focus-visible:outline-none"

@@ -13,7 +13,6 @@ import {
 import { cn } from "cn";
 import { buttonVariants } from "@/components/ui/button";
 import { brand } from "@/config/brand";
-import { getCurrentAccountId } from "@/lib/session";
 
 const PLATFORM = [
   {
@@ -83,9 +82,7 @@ const TICKET = [
   { item: "2L Soda", price: "$3.29" },
 ];
 
-export default async function Home() {
-  const hasApplication = Boolean(await getCurrentAccountId());
-
+export default function Home() {
   return (
     <div className="flex flex-col">
       <section className="bg-linear-to-br from-adora-navy to-adora-blue text-white">
@@ -103,16 +100,6 @@ export default async function Home() {
               restaurant in the portfolio take payments and get paid out on the same platform.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link
-                href="/apply"
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "h-11 bg-white px-5 text-adora-navy hover:bg-white/90",
-                )}
-              >
-                {hasApplication ? "Continue your application" : "See merchant onboarding"}
-                <ArrowRightIcon data-icon="inline-end" />
-              </Link>
               <Link
                 href="/operator"
                 className={cn(

@@ -221,6 +221,7 @@ type PurseMethod = { alias?: string; token: string; isDeleted?: boolean };
 /** `GET /merchant/withdrawer/{id}/profile`. */
 export type CoinflowCustomerData = {
   emails?: string[];
+  kycName?: string;
   payouts?: CoinflowWithdraw[];
   payments?: CoinflowPayment[];
   verifications?: WithdrawerVerification[];

@@ -164,11 +164,13 @@ function OverviewTab({
   row,
   profile,
   timeZone,
+  showMerchant,
   onTab,
 }: {
   row: WithdrawerRow;
   profile: WithdrawerProfile;
   timeZone: string;
+  showMerchant: boolean;
   onTab: (tab: Tab) => void;
 }) {
   const activity = profile.payouts.length + profile.paymentsCount;
@@ -222,7 +224,7 @@ function OverviewTab({
           <CopyText value={row.wallet} label="withdrawer ID" mono />
         </KvRow>
         <KvRow label="Type">{row.isUser ? "Merchant-registered user" : "Blockchain wallet"}</KvRow>
-        <KvRow label="Merchant">{row.merchantId ?? "—"}</KvRow>
+        {showMerchant && <KvRow label="Merchant">{row.merchantId ?? "—"}</KvRow>}
         <KvRow label="Email">
           <CopyText value={row.email} label="email" />
         </KvRow>
@@ -521,6 +523,7 @@ function without<T>(record: Record<string, T>, key: string) {
 export function WithdrawerDrawer({
   withdrawer,
   timeZone,
+  showMerchant = false,
   container,
   onClose,
   onPrevious,
@@ -528,6 +531,7 @@ export function WithdrawerDrawer({
 }: {
   withdrawer: WithdrawerRow | null;
   timeZone: string;
+  showMerchant?: boolean;
   container: RefObject<HTMLElement | null>;
   onClose: () => void;
   onPrevious?: () => void;
@@ -610,9 +614,14 @@ export function WithdrawerDrawer({
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 flex-col gap-2">
-                      <Dialog.Title className="flex min-w-0 items-center gap-2 font-heading text-xl font-semibold text-shop-ink">
-                        <UserRoundIcon className="size-5 shrink-0 fill-current" />
-                        <span className="truncate">{withdrawer.email ?? withdrawer.wallet}</span>
+                      <Dialog.Title className="flex min-w-0 flex-col gap-0.5 font-heading text-shop-ink">
+                        <span className="flex min-w-0 items-center gap-2 text-xl font-semibold">
+                          <UserRoundIcon className="size-5 shrink-0 fill-current" />
+                          <span className="truncate">{withdrawer.name ?? withdrawer.email ?? withdrawer.wallet}</span>
+                        </span>
+                        {withdrawer.name && withdrawer.email && (
+                          <span className="truncate pl-7 text-xs font-normal text-muted-foreground">{withdrawer.email}</span>
+                        )}
                       </Dialog.Title>
                       <span className="flex items-center gap-2">
                         <BlockedPill blocked={withdrawer.blocked} override={withdrawer.override} reason={withdrawer.blockReason} />
@@ -653,7 +662,7 @@ export function WithdrawerDrawer({
                   ) : !profile ? (
                     <LoadingBody />
                   ) : tab === "overview" ? (
-                    <OverviewTab row={withdrawer} profile={profile} timeZone={timeZone} onTab={setTab} />
+                    <OverviewTab row={withdrawer} profile={profile} timeZone={timeZone} showMerchant={showMerchant} onTab={setTab} />
                   ) : tab === "activity" ? (
                     <ActivityTab row={withdrawer} profile={profile} timeZone={timeZone} />
                   ) : tab === "methods" ? (

@@ -145,7 +145,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
       />
       <NavItem
         href="/dashboard/adora-pay/withdrawers"
-        label="Withdrawers"
+        label="Staff"
         icon={UsersRoundIcon}
         active={pathname === "/dashboard/adora-pay/withdrawers"}
         onNavigate={onNavigate}
