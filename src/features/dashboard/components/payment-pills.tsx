@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   ActivityIcon,
   CheckIcon,
+  CircleAlertIcon,
   CircleCheckIcon,
   CircleXIcon,
   ClockIcon,
@@ -11,6 +12,7 @@ import {
   CopyIcon,
   CreditCardIcon,
   LandmarkIcon,
+  ScaleIcon,
   ShieldCheckIcon,
   ShieldIcon,
   ShieldXIcon,
@@ -19,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
+import type { ChargebackStatus } from "../chargebacks";
 import type { OrderMethod } from "../orders";
 import { PAYMENT_METHODS } from "../payments-series";
 
@@ -113,6 +116,19 @@ export function StatusPill({ status }: { status?: string }) {
   if (/refund|cancel|void|expire|revers/i.test(status))
     return <Pill tone="gray" icon={Undo2Icon}>{label}</Pill>;
   return <Pill tone="amber" icon={ClockIcon}>{label}</Pill>;
+}
+
+const CHARGEBACK_TONES: Record<ChargebackStatus, { tone: Tone; icon: LucideIcon }> = {
+  "Needs Response": { tone: "amber", icon: CircleAlertIcon },
+  "Under Review": { tone: "indigo", icon: ScaleIcon },
+  Accepted: { tone: "gray", icon: Undo2Icon },
+  "Chargeback Won": { tone: "green", icon: CircleCheckIcon },
+  "Chargeback Lost": { tone: "red", icon: CircleXIcon },
+};
+
+export function ChargebackStatusPill({ status }: { status: ChargebackStatus }) {
+  const { tone, icon } = CHARGEBACK_TONES[status];
+  return <Pill tone={tone} icon={icon}>{status}</Pill>;
 }
 
 export function ProtectionPill({ decision }: { decision?: string }) {

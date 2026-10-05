@@ -13,6 +13,7 @@ import {
   MenuIcon,
   MonitorIcon,
   ReceiptTextIcon,
+  ShieldAlertIcon,
   TruckIcon,
   XIcon,
   type LucideIcon,
@@ -119,6 +120,15 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         label="Payments"
         icon={ReceiptTextIcon}
         active={pathname === "/dashboard/adora-pay/payments"}
+        onNavigate={onNavigate}
+        accent
+      />
+      <NavItem
+        href="/dashboard/adora-pay/chargebacks"
+        label="Chargebacks"
+        icon={ShieldAlertIcon}
+        // Includes the dispute screen under it.
+        active={pathname.startsWith("/dashboard/adora-pay/chargebacks")}
         onNavigate={onNavigate}
         accent
       />

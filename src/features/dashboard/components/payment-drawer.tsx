@@ -29,6 +29,7 @@ import { Toaster } from "@/components/ui/sonner";
 import type { PaymentDetail } from "../payment-detail";
 import { AppleLogo, CopyableId, MethodPill, StatusPill, cardBrand, humanize, methodLabel, useCopy } from "./payment-pills";
 import { RefundDialog } from "./refund-dialog";
+import { SimulateChargebackDialog } from "./simulate-chargeback-dialog";
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
@@ -437,15 +438,26 @@ export function PaymentDrawer({
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   {detail && (
-                    <RefundDialog
-                      detail={detail}
-                      locationId={locationId}
-                      container={container}
-                      onRefunded={() => {
-                        forget(detail.id);
-                        onRefunded();
-                      }}
-                    />
+                    <>
+                      <SimulateChargebackDialog
+                        detail={detail}
+                        locationId={locationId}
+                        container={container}
+                        onSimulated={() => {
+                          forget(detail.id);
+                          onRefunded();
+                        }}
+                      />
+                      <RefundDialog
+                        detail={detail}
+                        locationId={locationId}
+                        container={container}
+                        onRefunded={() => {
+                          forget(detail.id);
+                          onRefunded();
+                        }}
+                      />
+                    </>
                   )}
                   <button
                     type="button"

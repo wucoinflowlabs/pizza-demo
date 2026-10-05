@@ -142,3 +142,44 @@ export type RefundQuote = {
   resolution?: CurrencyCents;
   adjustment?: CurrencyCents;
 };
+
+/** One row of `GET /merchant/chargebacks`, limited to the fields the dashboard reads. */
+export type CoinflowChargeback = {
+  _id: string;
+  chargebackId?: string;
+  createdAt: string;
+  updatedAt?: string;
+  /** When the processor loaded the dispute. */
+  loadedOn?: string;
+  customer?: string;
+  arn?: string;
+  reasonCode?: string;
+  reasonDescription?: string;
+  respondByDate?: string;
+  responded?: boolean;
+  merchantRespondedAt?: string;
+  accepted?: boolean;
+  decidedAt?: string;
+  decidedLostAt?: string;
+  chargebackFeeCents?: number;
+  disputedAmount?: CurrencyCents;
+  outstanding?: CurrencyCents;
+  secureDs?: { authenticationStatus?: string; challengeState?: string } | null;
+  /** Set once the disputed payment has been refunded. */
+  refund?: unknown;
+  /** Usually the full payment, but read defensively in case only the id is sent. */
+  payment?:
+    | (CoinflowPayment & {
+        chargebackProtectionDecision?: string;
+        customer?: unknown;
+        refundInfo?: { amount?: CurrencyCents };
+      })
+    | string;
+};
+
+/** `GET /merchant/chargebacks/{paymentId}`. */
+export type CoinflowChargebackDetail = {
+  chargeback: Omit<CoinflowChargeback, "payment"> & { shouldFight?: boolean; payment?: unknown };
+  payment?: CoinflowChargeback["payment"];
+  customer?: unknown;
+};

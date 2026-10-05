@@ -16,6 +16,8 @@ export type PaymentDetail = {
   refundedAt?: string;
   /** Settled payments with something left to refund. */
   refundable: boolean;
+  /** Settled card payments, which a sandbox chargeback can be opened on. */
+  chargebackable: boolean;
   method: OrderMethod;
   card?: {
     bin?: string;
@@ -172,6 +174,7 @@ export function toPaymentDetail(payment: CoinflowPaymentDetail): PaymentDetail {
     refundedCents,
     refundedAt: payment.refundInfo?.refundedAt,
     refundable: !!status && REFUNDABLE_STATUSES.has(status) && refundedCents < subtotalCents,
+    chargebackable: order.method.key === "card" && !!status && REFUNDABLE_STATUSES.has(status),
     method: order.method,
     card:
       order.method.key === "card"
