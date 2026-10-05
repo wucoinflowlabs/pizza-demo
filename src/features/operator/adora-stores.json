@@ -8,6 +8,22 @@
     "phone": "(310) 208-8671"
   },
   {
+    "id": "SILVERLAKE",
+    "customerId": "lamonica",
+    "street": "2418 Sunset Blvd",
+    "city": "Los Angeles",
+    "state": "CA",
+    "phone": "(323) 555-0142"
+  },
+  {
+    "id": "DTLA",
+    "customerId": "lamonica",
+    "street": "735 S Grand Ave",
+    "city": "Los Angeles",
+    "state": "CA",
+    "phone": "(213) 555-0187"
+  },
+  {
     "id": "KJT3Q",
     "customerId": "mmp",
     "street": "800 North 54th St Suite 5",

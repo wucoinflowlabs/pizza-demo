@@ -1,5 +1,4 @@
 import "server-only";
-import { timingSafeEqual } from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 /** Shared demo password for every merchant login. */
@@ -14,13 +13,6 @@ export type MerchantLogin = {
   /** Coinflow submerchant id. Null until Coinflow has created the account. */
   cfSubmerchantId: string | null;
 };
-
-function passwordsMatch(given: string, expected: string) {
-  const actual = Buffer.from(given);
-  const stored = Buffer.from(expected);
-  if (actual.length !== stored.length) return false;
-  return timingSafeEqual(actual, stored);
-}
 
 export class MerchantLoginEmailTakenError extends Error {
   constructor() {
@@ -115,7 +107,15 @@ export async function getMerchantLogin(email: string): Promise<MerchantLogin | u
     .eq("email", normalized)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) return undefined;
+  return data ? toMerchantLogin(data) : undefined;
+}
+
+function toMerchantLogin(data: {
+  id: string;
+  email: string;
+  name: string | null;
+  cf_submerchant_id: string | null;
+}): MerchantLogin {
   return {
     id: data.id,
     email: data.email,
@@ -124,25 +124,50 @@ export async function getMerchantLogin(email: string): Promise<MerchantLogin | u
   };
 }
 
-export async function verifyMerchantPassword({
-  email,
-  password,
-}: {
-  email: string;
-  password: string;
-}): Promise<MerchantLogin | undefined> {
-  const normalized = email.trim().toLowerCase();
+export async function getMerchantLoginBySubmerchantId(
+  cfSubmerchantId: string,
+): Promise<MerchantLogin | undefined> {
   const { data, error } = await getSupabaseAdmin()
     .from("merchant_logins")
-    .select("id, email, name, cf_submerchant_id, password")
-    .eq("email", normalized)
+    .select("id, email, name, cf_submerchant_id")
+    .eq("cf_submerchant_id", cfSubmerchantId)
+    .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data || !passwordsMatch(password, data.password)) return undefined;
-  return {
-    id: data.id,
-    email: data.email,
-    name: data.name,
-    cfSubmerchantId: data.cf_submerchant_id,
-  };
+  return data ? toMerchantLogin(data) : undefined;
+}
+
+/**
+ * Returns the login for this email, creating it when the store has none yet.
+ * An existing login keeps its name, and only gains a Coinflow id if it had none.
+ */
+export async function ensureMerchantLogin({
+  email,
+  name,
+  cfSubmerchantId,
+}: {
+  email: string;
+  name: string;
+  cfSubmerchantId?: string;
+}): Promise<MerchantLogin> {
+  const normalized = email.trim().toLowerCase();
+  const admin = getSupabaseAdmin();
+  const { error: insertError } = await admin.from("merchant_logins").upsert(
+    {
+      email: normalized,
+      name,
+      password: DEMO_MERCHANT_PASSWORD,
+      cf_submerchant_id: cfSubmerchantId ?? null,
+    },
+    { onConflict: "email", ignoreDuplicates: true },
+  );
+  if (insertError) throw new Error(insertError.message);
+
+  const login = await getMerchantLogin(normalized);
+  if (!login) throw new Error(`No merchant login for ${normalized}.`);
+  if (cfSubmerchantId && !login.cfSubmerchantId) {
+    await setLoginSubmerchantId(normalized, cfSubmerchantId);
+    return { ...login, cfSubmerchantId };
+  }
+  return login;
 }

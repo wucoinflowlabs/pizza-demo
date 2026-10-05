@@ -217,7 +217,7 @@ function SidebarBody({
             className="h-8 w-full text-muted-foreground hover:bg-shop-surface hover:text-shop-ink"
           >
             <LogOutIcon />
-            Sign out
+            Switch restaurant
           </Button>
         </form>
       </div>

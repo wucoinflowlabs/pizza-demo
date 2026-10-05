@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Payments" };
 
 export default async function PaymentsPage({ searchParams }: PageProps<"/dashboard/adora-pay/payments">) {
   const session = await getSessionSubmerchant();
-  if (!session) redirect("/login");
+  if (!session) redirect("/operator");
   // Payments only exist once the shop has an Adora Pay account.
   const { login, submerchantId } = session;
   if (!submerchantId) redirect("/dashboard/adora-pay");

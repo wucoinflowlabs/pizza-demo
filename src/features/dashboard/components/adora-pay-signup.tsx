@@ -250,10 +250,7 @@ export function AdoraPaySignup({
               )}
               {stage === "pending" && <UnderReviewScreen />}
               {stage === "approved" && (
-                <ApprovedScreen
-                  businessName={businessName}
-                  email={typeof values.businessEmail === "string" ? values.businessEmail : undefined}
-                />
+                <ApprovedScreen businessName={businessName} />
               )}
             </div>
           </div>

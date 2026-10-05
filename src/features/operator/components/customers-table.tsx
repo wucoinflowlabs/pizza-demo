@@ -2,8 +2,16 @@
 
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRightIcon, CreditCardIcon, MapPinIcon, SearchIcon } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { useFormStatus } from "react-dom";
+import {
+  ChevronRightIcon,
+  CreditCardIcon,
+  Loader2Icon,
+  LogInIcon,
+  MapPinIcon,
+  SearchIcon,
+} from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AdoraCustomer } from "../adora-customers";
+import { signInAsStore } from "../actions";
 import type { AdoraStore } from "../adora-stores";
 import {
   revealApproval,
@@ -29,12 +38,39 @@ export type CustomerStore = AdoraStore & {
   status: StoreOnboardingStatus;
   label: string;
   completedAt: OnboardingCompletedAt;
+  /** Coinflow account for this store, once onboarding has started. */
+  merchantId: string | null;
 };
 
 function brandSummary(stores: CustomerStore[]) {
   if (stores.length === 0) return "No locations";
   const onboarded = stores.filter((store) => store.status === "approved").length;
   return `${onboarded}/${stores.length} onboarded`;
+}
+
+function SignInButton({ primary }: { primary: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="sm" variant={primary ? "default" : "outline"} disabled={pending}>
+      {pending ? (
+        <Loader2Icon data-icon="inline-start" className="animate-spin" />
+      ) : (
+        <LogInIcon data-icon="inline-start" />
+      )}
+      Sign in as restaurant
+    </Button>
+  );
+}
+
+function SignInAsStore({ store }: { store: CustomerStore }) {
+  return (
+    <form action={signInAsStore}>
+      <input type="hidden" name="customerId" value={store.customerId} />
+      <input type="hidden" name="storeId" value={store.id} />
+      {store.merchantId && <input type="hidden" name="merchantId" value={store.merchantId} />}
+      <SignInButton primary={store.status !== "not-started"} />
+    </form>
+  );
 }
 
 function StoreLine({ store }: { store: CustomerStore }) {
@@ -48,7 +84,8 @@ function StoreLine({ store }: { store: CustomerStore }) {
         </div>
       </div>
       <StoreProgress status={store.status} completedAt={store.completedAt} />
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <SignInAsStore store={store} />
         {store.status === "not-started" && (
           <Link
             href={`/operator/new?customer=${store.customerId}&store=${store.id}`}

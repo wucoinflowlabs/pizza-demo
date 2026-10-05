@@ -19,9 +19,9 @@ export const metadata: Metadata = { title: "Adora Pay" };
 
 export default async function AdoraPayPage() {
   const email = await getCurrentMerchantEmail();
-  if (!email) redirect("/login");
+  if (!email) redirect("/operator");
   const login = await getMerchantLogin(email);
-  if (!login) redirect("/login");
+  if (!login) redirect("/operator");
 
   const submerchantId = await findSubmerchantIdByEmail(login.email);
   if (!submerchantId) {

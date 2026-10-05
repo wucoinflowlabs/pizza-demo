@@ -9,9 +9,9 @@ export const metadata: Metadata = { title: "Home" };
 
 export default async function DashboardHome() {
   const email = await getCurrentMerchantEmail();
-  if (!email) redirect("/login");
+  if (!email) redirect("/operator");
   const login = await getMerchantLogin(email);
-  if (!login) redirect("/login");
+  if (!login) redirect("/operator");
 
   const profile = await getMerchantHomeProfile(login);
   return <MerchantHome profile={profile} />;

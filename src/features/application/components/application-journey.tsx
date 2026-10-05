@@ -135,9 +135,6 @@ export function ApplicationJourney({
   };
 
   const businessName = typeof initialValues.dba === "string" ? initialValues.dba : undefined;
-  const loginEmail =
-    progress.accountEmail ??
-    (typeof initialValues.businessEmail === "string" ? initialValues.businessEmail : undefined);
 
   const content: Record<StepId, React.ReactNode> = {
     business: (
@@ -161,7 +158,7 @@ export function ApplicationJourney({
     ),
     submit:
       progress.applicationSubmitted && isApproved(progress) && !approvalHeld ? (
-        <ApprovedScreen businessName={businessName} email={loginEmail} />
+        <ApprovedScreen businessName={businessName} />
       ) : progress.applicationSubmitted || approvalHeld ? (
         <UnderReviewScreen />
       ) : (

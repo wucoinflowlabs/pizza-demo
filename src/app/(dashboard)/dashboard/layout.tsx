@@ -11,7 +11,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
   const login = email ? await getMerchantLogin(email) : undefined;
   if (!login) {
     if (email) await endMerchantSession();
-    redirect("/login");
+    redirect("/operator");
   }
 
   return (

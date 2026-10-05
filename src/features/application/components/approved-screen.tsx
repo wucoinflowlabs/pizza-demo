@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   BadgeCheckIcon,
   CheckCircle2Icon,
@@ -10,12 +9,11 @@ import {
   RefreshCwIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { cn } from "cn";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { brand } from "@/config/brand";
 import { setupSettlement, type SettlementSetupState } from "../actions";
-import { dashboardLoginHref } from "../login-href";
+import { signInAsCurrentAccount } from "@/features/dashboard/actions";
 
 const PAYOUT_COPY: Record<
   SettlementSetupState,
@@ -118,13 +116,7 @@ const NEXT_STEPS = [
   "Earnings settle automatically — track them from your dashboard.",
 ];
 
-export function ApprovedScreen({
-  businessName,
-  email,
-}: {
-  businessName?: string;
-  email?: string;
-}) {
+export function ApprovedScreen({ businessName }: { businessName?: string }) {
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -147,12 +139,11 @@ export function ApprovedScreen({
         </CardContent>
       </Card>
       <PayoutSetupCard />
-      <Link
-        href={dashboardLoginHref(email)}
-        className={cn(buttonVariants({ size: "lg" }), "self-start")}
-      >
-        Sign in to merchant dashboard
-      </Link>
+      <form action={signInAsCurrentAccount} className="self-start">
+        <Button type="submit" size="lg">
+          Sign in to merchant dashboard
+        </Button>
+      </form>
     </div>
   );
 }

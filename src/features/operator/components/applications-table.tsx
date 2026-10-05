@@ -59,7 +59,7 @@ export function ApplicationsTable({ applications }: { applications: ListedApplic
       <Card>
         <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
           <p className="text-muted-foreground">
-            No applications yet. Enable payment processing from Adora customers to start one.
+            No applications yet. Enable payment processing from Franchises to start one.
           </p>
         </CardContent>
       </Card>
