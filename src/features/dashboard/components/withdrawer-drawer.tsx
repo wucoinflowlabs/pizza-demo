@@ -737,7 +737,6 @@ export function WithdrawerDrawer({
                     container={container}
                     method={pendingPayout ?? { title: "", subtitle: "" }}
                     sandboxUserId={realPayout.userId}
-                    maxCents={realPayout.maxCents}
                     onSent={() => router.refresh()}
                   />
                 )}

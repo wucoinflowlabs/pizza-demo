@@ -7,6 +7,7 @@ import {
   ChefHatIcon,
   CreditCardIcon,
   GiftIcon,
+  HandCoinsIcon,
   GlobeIcon,
   HouseIcon,
   LogOutIcon,
@@ -122,6 +123,14 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         label="Payments"
         icon={ReceiptTextIcon}
         active={pathname === "/dashboard/adora-pay/payments"}
+        onNavigate={onNavigate}
+        accent
+      />
+      <NavItem
+        href="/dashboard/adora-pay/tips"
+        label="Tips"
+        icon={HandCoinsIcon}
+        active={pathname === "/dashboard/adora-pay/tips"}
         onNavigate={onNavigate}
         accent
       />
