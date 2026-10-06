@@ -23,6 +23,7 @@ import {
   type FormValues,
 } from "@/lib/onboarding-form";
 import { PaymentsError } from "@/lib/payments/errors";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { saveOnboardingDraft } from "@/lib/payments/onboarding";
 import {
   createSubmerchant,
@@ -52,6 +53,10 @@ export type ApplicationSummary = {
   onboardingFormSubmitted: boolean;
   applicationSubmitted: boolean;
   applicationSubmittedAt?: string;
+  /** When the merchant finished the KYB step in the dashboard (from Supabase). */
+  kybCompletedAt?: string;
+  /** When the merchant submitted the onboarding form (from Supabase). */
+  formSubmittedAt?: string;
   approved: boolean;
   payouts: PayoutStatus;
 };
@@ -71,22 +76,57 @@ type ListedSubmerchant = {
   settlementAddresses?: RawSettlementAddresses;
 };
 
+
+/** Reads each shop's kyb_completed_at from Supabase, keyed by cf_submerchant_id. */
+type ShopTimestamps = { kybCompletedAt?: string; formSubmittedAt?: string };
+
+async function loadShopTimestamps(): Promise<Map<string, ShopTimestamps>> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("shops")
+    .select("cf_submerchant_id, kyb_completed_at, form_submitted_at");
+  if (error) {
+    console.error(
+      "[operator] shop timestamps lookup failed:",
+      error.message ?? error.hint ?? JSON.stringify(error),
+    );
+    return new Map();
+  }
+  const out = new Map<string, ShopTimestamps>();
+  for (const row of data ?? []) {
+    if (!row.cf_submerchant_id) continue;
+    out.set(row.cf_submerchant_id, {
+      kybCompletedAt: row.kyb_completed_at ?? undefined,
+      formSubmittedAt: row.form_submitted_at ?? undefined,
+    });
+  }
+  return out;
+}
+
 async function listSubmerchantRecords(): Promise<ListedSubmerchant[]> {
   return (await listSubmerchants({ limit: 100 })) as unknown as ListedSubmerchant[];
 }
 
-/** An unblocked account is not approval until onboarding details are submitted. */
+/**
+ * Fully-reviewed and live. Sandbox sub-merchants start with `blocked: false`
+ * and `verification.status: approved` by default, so neither flag alone is a
+ * signal of compliance approval. The real signal is the merchant having
+ * clicked "Submit application" (which only unlocks after KYB), confirmed by
+ * the account still being unblocked and the Persona case still Approved.
+ */
 function isApplicationApproved(submerchant: ListedSubmerchant): boolean {
   return (
-    !submerchant.blocked && Boolean(submerchant.goLiveChecklist?.onboardingFormSubmitted)
+    !submerchant.blocked &&
+    Boolean(submerchant.goLiveChecklist?.applicationSubmitted) &&
+    submerchant.verification?.status === "approved"
   );
 }
 
 /** Only the fields the operator table shows — the raw records include API keys. */
 export async function listApplications(): Promise<ApplicationSummary[]> {
-  const [submerchants, parent] = await Promise.all([
+  const [submerchants, parent, shopTimesByMerchantId] = await Promise.all([
     listSubmerchantRecords(),
     getSettlementAddresses(),
+    loadShopTimestamps(),
   ]);
   return submerchants
     .map((submerchant) => {
@@ -103,6 +143,8 @@ export async function listApplications(): Promise<ApplicationSummary[]> {
         applicationSubmitted: Boolean(submerchant.goLiveChecklist?.applicationSubmitted),
         applicationSubmittedAt:
           typeof applicationSubmittedAt === "string" ? applicationSubmittedAt : undefined,
+        kybCompletedAt: shopTimesByMerchantId.get(submerchant.merchantId)?.kybCompletedAt,
+        formSubmittedAt: shopTimesByMerchantId.get(submerchant.merchantId)?.formSubmittedAt,
         approved,
         payouts: payoutStatus({
           approved,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { AlertCircleIcon, ArrowRightIcon, Loader2Icon, XIcon } from "lucide-react";
 import { OnboardingFields } from "@/components/onboarding-form/onboarding-fields";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -33,12 +33,19 @@ type Stage = "page" | "intro" | "form" | "kyb" | "submit" | "pending" | "approve
 
 function stageFor(progress?: SubmerchantProgress): Stage {
   if (!progress) return "page";
-  if (
-    progress.applicationSubmitted ||
-    (progress.onboardingFormSubmitted && progress.approved)
-  )
-    return "submit";
+  // The only legitimate skip past KYB is a completed application. Coinflow
+  // sandbox pre-approves `verification.status` before Persona ever runs, so
+  // the merchant still has to walk the KYB step at least once. KYB itself
+  // shows a "Business verified → Continue" shortcut once sandbox is happy.
+  if (progress.applicationSubmitted) return "submit";
   if (!progress.onboardingFormSubmitted) return "form";
+  return "kyb";
+}
+
+/** Adora already created the account, so Enroll opens KYB instead of the form. */
+function enrollStage(progress?: SubmerchantProgress): Stage {
+  if (!progress) return "form";
+  if (progress.applicationSubmitted) return "submit";
   return "kyb";
 }
 
@@ -62,7 +69,7 @@ export function AdoraPaySignup({
   openApplication?: boolean;
 }) {
   const [stage, setStage] = useState<Stage>(() =>
-    openApplication && !initialProgress ? "form" : stageFor(initialProgress),
+    openApplication ? enrollStage(initialProgress) : stageFor(initialProgress),
   );
   const [progress, setProgress] = useState(initialProgress);
   const [values, setValues] = useState(prefill);
@@ -70,8 +77,26 @@ export function AdoraPaySignup({
   const [message, setMessage] = useState<string>();
   const [releaseAt, setReleaseAt] = useState<number>();
   const [pending, startSubmit] = useTransition();
-  const prefilled = new Set(Object.keys(prefill));
   const businessName = typeof prefill.dba === "string" ? prefill.dba : undefined;
+  const filedDraft = useRef(false);
+
+  // Adora saved the onboarding answers when the account was created. File them
+  // so KYB is the step the merchant actually has left. If anything is missing,
+  // fall back to the form.
+  useEffect(() => {
+    if (!openApplication || !initialProgress || initialProgress.onboardingFormSubmitted) return;
+    if (initialProgress.applicationSubmitted || filedDraft.current) return;
+    filedDraft.current = true;
+    void startAdoraPayOnboarding(prefill).then((result) => {
+      if (!result.ok) {
+        setErrors(result.fieldErrors ?? {});
+        setMessage(result.message);
+        setStage("form");
+        return;
+      }
+      setProgress(result.progress);
+    });
+  }, [openApplication, initialProgress, prefill]);
 
   useEffect(() => {
     if (stage !== "pending" || releaseAt === undefined) return;
@@ -119,7 +144,7 @@ export function AdoraPaySignup({
                   Your application hasn&apos;t been sent for review yet.
                 </p>
               </div>
-              <Button type="button" className="gap-2" onClick={() => setStage(stageFor(progress))}>
+              <Button type="button" className="gap-2" onClick={() => setStage(enrollStage(progress))}>
                 Continue onboarding
                 <ArrowRightIcon />
               </Button>
@@ -210,8 +235,6 @@ export function AdoraPaySignup({
                     fields={FIELD_DEFINITIONS}
                     values={values}
                     errors={errors}
-                    prefilledBadge="From Adora"
-                    isPrefilled={(name) => prefilled.has(name) && name !== "payinMethods" && name !== "payoutMethods"}
                     onChange={(name: string, value: FieldValue) => {
                       setValues((current) => ({ ...current, [name]: value }));
                       setErrors((current) => withoutKey(current, name));
