@@ -4,19 +4,15 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ChefHatIcon,
   CreditCardIcon,
   FileTextIcon,
-  GiftIcon,
   HandCoinsIcon,
   GlobeIcon,
   HouseIcon,
   LogOutIcon,
   MenuIcon,
-  MonitorIcon,
   ReceiptTextIcon,
   ShieldAlertIcon,
-  TruckIcon,
   UsersRoundIcon,
   WalletCardsIcon,
   XIcon,
@@ -29,11 +25,7 @@ import { MERCHANT_PRODUCTS } from "../products";
 import { shopThemeStyle, type ShopTheme } from "../shop-theme";
 
 const PRODUCT_ICONS: Record<(typeof MERCHANT_PRODUCTS)[number]["slug"], LucideIcon> = {
-  "point-of-sale": MonitorIcon,
   "online-ordering": GlobeIcon,
-  "kitchen-display": ChefHatIcon,
-  delivery: TruckIcon,
-  loyalty: GiftIcon,
 };
 
 function accountMark(name: string | null | undefined, email: string) {
@@ -218,23 +210,15 @@ function AccountMark({
 
 function SidebarBody({
   logo,
-  email,
-  name,
-  subtitle,
-  shopLogo,
   franchise,
+  balance,
   onNavigate,
 }: {
   logo: ReactNode;
-  email: string;
-  name?: string | null;
-  subtitle?: string;
-  shopLogo?: string;
   franchise?: boolean;
+  balance?: ReactNode;
   onNavigate?: () => void;
 }) {
-  const shop = name?.trim();
-
   return (
     <div className="flex min-h-full flex-col px-3.5 py-5">
       <Link
@@ -250,30 +234,44 @@ function SidebarBody({
         className="mx-1.5 mt-5 mb-4 h-px bg-gradient-to-r from-transparent via-shop-accent/35 to-transparent"
       />
       <NavLinks onNavigate={onNavigate} franchise={franchise} />
-      <div className="mt-6 rounded-2xl bg-white p-3 shadow-[0_16px_40px_-28px_var(--shop-ink)] ring-1 ring-shop-ink/10">
-        <div className="flex items-center gap-2.5 px-0.5">
-          <AccountMark name={shop} email={email} logo={shopLogo} />
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-medium text-foreground">
-              {shop || email}
-            </span>
-            {shop ? (
-              <span className="block truncate text-xs text-muted-foreground">{subtitle ?? email}</span>
-            ) : null}
-          </span>
-        </div>
-        <form action={signOutMerchant} className="mt-2.5">
-          <Button
-            type="submit"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-full text-muted-foreground hover:bg-shop-surface hover:text-shop-ink"
-          >
-            <LogOutIcon />
-            Switch restaurant
-          </Button>
-        </form>
-      </div>
+      {balance && <div className="mt-6">{balance}</div>}
+    </div>
+  );
+}
+
+/** The signed-in restaurant and the way out, floating in the bottom-right corner of every page. */
+function AccountDock({
+  email,
+  shop,
+  subtitle,
+  shopLogo,
+}: {
+  email: string;
+  shop?: string;
+  subtitle?: string;
+  shopLogo?: string;
+}) {
+  return (
+    <div className="fixed right-4 bottom-4 z-30 flex max-w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-white/95 p-2.5 shadow-[0_16px_40px_-20px_var(--shop-ink)] ring-1 ring-shop-ink/10 backdrop-blur">
+      <AccountMark name={shop} email={email} logo={shopLogo} />
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium text-foreground">{shop || email}</span>
+        {shop ? (
+          <span className="hidden truncate text-xs text-muted-foreground sm:block">{subtitle ?? email}</span>
+        ) : null}
+      </span>
+      <span aria-hidden className="h-9 w-px shrink-0 bg-shop-ink/10" />
+      <form action={signOutMerchant} className="shrink-0">
+        <Button
+          type="submit"
+          variant="ghost"
+          size="sm"
+          className="h-8 text-muted-foreground hover:bg-shop-surface hover:text-shop-ink"
+        >
+          <LogOutIcon />
+          Switch restaurant
+        </Button>
+      </form>
     </div>
   );
 }
@@ -285,6 +283,7 @@ export function DashboardShell({
   subtitle,
   shopLogo,
   franchise,
+  balance,
   theme,
   children,
 }: {
@@ -296,6 +295,8 @@ export function DashboardShell({
   shopLogo?: string;
   /** A franchise owner, who also gets the Statements page. */
   franchise?: boolean;
+  /** The account balance card, streamed in by the layout. */
+  balance?: ReactNode;
   theme: ShopTheme;
   children: ReactNode;
 }) {
@@ -312,11 +313,8 @@ export function DashboardShell({
       <aside className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-shop-ink/10 bg-gradient-to-b from-shop-surface via-shop-surface to-background md:flex">
         <SidebarBody
           logo={logo}
-          email={email}
-          name={name}
-          subtitle={subtitle}
-          shopLogo={shopLogo}
           franchise={franchise}
+          balance={balance}
         />
       </aside>
       {open && (
@@ -335,15 +333,12 @@ export function DashboardShell({
       >
         <SidebarBody
           logo={logo}
-          email={email}
-          name={name}
-          subtitle={subtitle}
-          shopLogo={shopLogo}
           franchise={franchise}
+          balance={balance}
           onNavigate={() => setOpen(false)}
         />
       </aside>
-      <div className="flex min-w-0 flex-1 flex-col bg-gradient-to-b from-shop-surface to-background">
+      <div className="flex min-w-0 flex-1 flex-col bg-gradient-to-b from-shop-surface to-background pb-24">
         <div className="flex items-center gap-3 border-b border-shop-ink/10 bg-shop-surface/90 px-4 py-3 backdrop-blur md:hidden">
           <Button
             type="button"
@@ -360,6 +355,7 @@ export function DashboardShell({
         </div>
         {children}
       </div>
+      <AccountDock email={email} shop={shop} subtitle={subtitle} shopLogo={shopLogo} />
     </div>
   );
 }

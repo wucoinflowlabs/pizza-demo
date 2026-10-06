@@ -96,6 +96,26 @@ export async function simulateChargebackAction(
   }
 }
 
+/** Sandbox only: decides an under-review chargeback in the merchant's favour. */
+export async function simulateChargebackWonAction(
+  input: z.input<typeof ChargebackInput>,
+): Promise<ActionResult> {
+  const parsed = ChargebackInput.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "This chargeback can't be won." };
+
+  const { paymentId, location } = parsed.data;
+  const submerchantId = await resolvePaymentSubmerchant(location);
+  if (!submerchantId) return { ok: false, error: "Your session has ended. Sign in again." };
+
+  try {
+    await simulateChargeback(submerchantId, paymentId, "CHARGEBACK_WON");
+    return { ok: true };
+  } catch (err) {
+    console.error("[dashboard] simulating chargeback win failed", err);
+    return { ok: false, error: errorMessage(err, "The win couldn't be simulated. Please try again.") };
+  }
+}
+
 export async function acceptChargebackAction(input: z.input<typeof ChargebackInput>): Promise<ActionResult> {
   const parsed = ChargebackInput.safeParse(input);
   if (!parsed.success) return { ok: false, error: "This chargeback can't be accepted." };

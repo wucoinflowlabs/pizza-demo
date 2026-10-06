@@ -81,7 +81,7 @@ export function MerchantHome({ profile }: { profile: MerchantHomeProfile }) {
                       "h-8 rounded-full bg-white px-3 text-shop-ink hover:bg-white/90",
                     )}
                   >
-                    {product.slug === "point-of-sale" ? "Open the POS" : product.title}
+                    {product.title}
                     <ArrowRightIcon data-icon="inline-end" />
                   </Link>
                 ))}

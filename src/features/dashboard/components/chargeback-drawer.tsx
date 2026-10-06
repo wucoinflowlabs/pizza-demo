@@ -10,7 +10,7 @@ import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import type { Chargeback } from "../chargebacks";
-import { acceptChargebackAction } from "../payment-actions";
+import { acceptChargebackAction, simulateChargebackWonAction } from "../payment-actions";
 import { ChargebackStatusPill, CopyableId } from "./payment-pills";
 
 const PAYMENTS_PATH = "/dashboard/adora-pay/payments";
@@ -155,6 +155,38 @@ function AcceptDialog({
   );
 }
 
+/** Sandbox only: decides an under-review chargeback in the merchant's favour. */
+function SimulateWinButton({ chargeback, onWon }: { chargeback: Chargeback; onWon: () => void }) {
+  const [pending, startTransition] = useTransition();
+
+  const simulate = () =>
+    startTransition(async () => {
+      const result = await simulateChargebackWonAction({
+        paymentId: chargeback.id,
+        location: chargeback.location?.id,
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Chargeback won. It can take a few minutes to update here.");
+      onWon();
+    });
+
+  return (
+    <button
+      type="button"
+      onClick={simulate}
+      disabled={pending}
+      title="Simulate the bank deciding this chargeback in your favour (sandbox)"
+      className={SECONDARY_ACTION}
+    >
+      {pending && <Loader2Icon className="size-4 animate-spin" />}
+      Simulate winning chargeback
+    </button>
+  );
+}
+
 export function ChargebackDrawer({
   chargeback,
   timeZone,
@@ -256,6 +288,9 @@ export function ChargebackDrawer({
                         <span aria-disabled className={SECONDARY_ACTION}>
                           View customer
                         </span>
+                      )}
+                      {chargeback.status === "Under Review" && (
+                        <SimulateWinButton chargeback={chargeback} onWon={onChanged} />
                       )}
                       <AcceptDialog chargeback={chargeback} container={container} onAccepted={onChanged} />
                       {chargeback.status === "Needs Response" ? (

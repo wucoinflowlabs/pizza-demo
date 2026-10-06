@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { DashboardShell } from "@/features/dashboard/components/dashboard-nav";
+import { SidebarBalance, SidebarBalanceSkeleton } from "@/features/dashboard/components/sidebar-balance";
 import { franchiseSummary, getSessionFranchise } from "@/features/dashboard/franchise";
 import { shopLogo } from "@/features/dashboard/shop-logo";
 import { shopTheme } from "@/features/dashboard/shop-theme";
@@ -19,6 +21,11 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
         subtitle={`Franchise owner · ${franchiseSummary(franchise)}`}
         shopLogo={customer.logo}
         franchise
+        balance={
+          <Suspense fallback={<SidebarBalanceSkeleton />}>
+            <SidebarBalance franchise />
+          </Suspense>
+        }
         theme={shopTheme({ name: customer.name })}
       >
         {children}
@@ -39,6 +46,11 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
       email={login.email}
       name={login.name}
       shopLogo={shopLogo({ name: login.name, email: login.email })}
+      balance={
+        <Suspense fallback={<SidebarBalanceSkeleton />}>
+          <SidebarBalance />
+        </Suspense>
+      }
       theme={shopTheme({ name: login.name, email: login.email })}
     >
       {children}

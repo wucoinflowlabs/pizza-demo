@@ -18,6 +18,7 @@ const CALL_LABELS: { method: string; pattern: RegExp; label: string }[] = [
   { method: "GET", pattern: /^\/merchant\/chargebacks\/[^/?]+\/draft$/, label: "Load chargeback draft" },
   { method: "PUT", pattern: /^\/merchant\/chargebacks\/[^/?]+\/draft$/, label: "Save chargeback draft" },
   { method: "POST", pattern: /^\/merchant\/chargebacks\/[^/?]+\/respond$/, label: "Respond to chargeback" },
+  { method: "PUT", pattern: /^\/merchant\/chargebacks\/simulate\/[^/?]+\/CHARGEBACK_WON$/, label: "Simulate chargeback won" },
   { method: "PUT", pattern: /^\/merchant\/chargebacks\/simulate\/[^/?]+\/[^/?]+$/, label: "Simulate chargeback" },
   { method: "POST", pattern: /^\/merchant\/settlement-address$/, label: "Set settlement address" },
   { method: "POST", pattern: /^\/merchant\/files\/upload-url$/, label: "Request document upload URL" },
@@ -27,6 +28,7 @@ const CALL_LABELS: { method: string; pattern: RegExp; label: string }[] = [
   { method: "GET", pattern: /^\/merchant\/withdrawer\/[^/?]+\/audit-logs$/, label: "Get withdrawer audit log" },
   { method: "PUT", pattern: /^\/merchant\/block-withdrawer\/[^/?]+$/, label: "Update withdrawer block status" },
   { method: "GET", pattern: /^\/merchant\/withdraws(\?|$)/, label: "List withdrawals" },
+  { method: "GET", pattern: /^\/merchant\/withdraws\/payout\/balance$/, label: "Get payout balance" },
   { method: "GET", pattern: /^\/merchant\/withdraws\/[^/?]+$/, label: "Get withdrawal" },
   { method: "GET", pattern: /^\/merchant\/withdraws\/[^/?]+\/enhanced$/, label: "Get withdrawal recipient" },
 ];

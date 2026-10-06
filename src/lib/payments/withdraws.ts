@@ -105,3 +105,13 @@ export function setWithdrawerAvailability(
     asSubmerchant: submerchantId,
   });
 }
+
+/** The sub-merchant's balance available to pay out, in cents. */
+export async function getPayoutBalance(submerchantId: string) {
+  const body = await paymentsRequest<{ balance?: { cents?: number } }>({
+    method: "GET",
+    path: "/merchant/withdraws/payout/balance",
+    asSubmerchant: submerchantId,
+  });
+  return body?.balance?.cents ?? 0;
+}
