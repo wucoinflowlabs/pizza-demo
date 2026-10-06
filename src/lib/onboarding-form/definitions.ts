@@ -200,7 +200,7 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
   {
     name: "payoutsMonthlyVolume",
     type: "money-amount",
-    label: "Estimated monthly payout volume across end-user payout products",
+    label: "Estimated monthly payout volume across third-party payout products",
     placeholder: "Estimated monthly payout volume",
     required: true,
     audience: "platform",

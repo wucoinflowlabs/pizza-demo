@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2Icon, SendIcon, UserRoundIcon, WalletIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -10,18 +10,32 @@ import { Toaster } from "@/components/ui/sonner";
 import { cashOutTipsAction } from "../tips/cash-out-action";
 import type { SettledTip } from "../tips/queries";
 import type { TipRecipient } from "../tips/recipient";
+import { LocationPicker, type LocationOption } from "./table-controls";
 import { compactDate, money } from "./withdrawal-pills";
+
+type TipsSummary = {
+  todayCents: number;
+  weekCents: number;
+  unpaidCents: number;
+  lastPayout?: { atIso: string; cents: number };
+};
 
 export function TipsLedger({
   recipient,
   summary,
   recent,
   timeZone,
+  locations,
+  location,
+  emptyState,
 }: {
-  recipient: TipRecipient;
-  summary: { todayCents: number; weekCents: number; unpaidCents: number; lastPayout?: { atIso: string; cents: number } };
-  recent: SettledTip[];
+  recipient?: TipRecipient;
+  summary?: TipsSummary;
+  recent?: SettledTip[];
   timeZone: string;
+  locations?: LocationOption[];
+  location?: string;
+  emptyState?: { title: string; body: ReactNode };
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -29,28 +43,50 @@ export function TipsLedger({
 
   const cashOut = () =>
     startTransition(async () => {
-      const result = await cashOutTipsAction();
+      const result = await cashOutTipsAction({ locationId: location });
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
-      toast.success(`Cashed out ${money(result.cents)} to ${recipient.venmo?.display ?? "Venmo"}`);
+      toast.success(`Cashed out ${money(result.cents)} to ${recipient?.venmo?.display ?? "Venmo"}`);
       setSent(true);
       router.refresh();
     });
 
-  const canCashOut = summary.unpaidCents > 0 && Boolean(recipient.venmo?.token);
-  const noVenmo = !recipient.venmo?.token;
+  const canCashOut = (summary?.unpaidCents ?? 0) > 0 && Boolean(recipient?.venmo?.token);
+  const noVenmo = !recipient?.venmo?.token;
+  const picker = locations ? <LocationPicker locations={locations} value={location} /> : null;
+
+  if (emptyState || !recipient || !summary || !recent) {
+    return (
+      <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="font-heading text-2xl font-semibold text-shop-ink">Tips</h1>
+          {picker}
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted-foreground">
+            <WalletIcon className="size-6" />
+            <p className="font-medium text-foreground">{emptyState?.title ?? "Tips aren’t set up"}</p>
+            <p>{emptyState?.body ?? "Pick a shop above to see its tip ledger."}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-heading text-2xl font-semibold text-shop-ink">Tips</h1>
-          <p className="text-sm text-muted-foreground">
-            Every tip at checkout accrues to <span className="font-medium text-foreground">{recipient.name}</span>
-            {recipient.venmo ? <> and settles to {recipient.venmo.display}.</> : ". No Venmo method linked yet."}
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-2">
+            <h1 className="font-heading text-2xl font-semibold text-shop-ink">Tips</h1>
+            <p className="text-sm text-muted-foreground">
+              Every tip at checkout accrues to <span className="font-medium text-foreground">{recipient.name}</span>
+              {recipient.venmo ? <> and settles to {recipient.venmo.display}.</> : ". No Venmo method linked yet."}
+            </p>
+          </div>
+          {picker}
         </div>
 
         <Card>
