@@ -26,6 +26,7 @@ import {
   alignSettlementWithParent,
   type SettlementSetupState,
 } from "@/lib/settlement-setup";
+import { markFormSubmittedAction } from "@/features/dashboard/mark-form-action";
 
 export type { SettlementSetupState };
 
@@ -112,6 +113,7 @@ export async function submitDetails(
       if (!hasValue(value)) delete merged[name];
 
     await submitOnboardingForm({ submerchantId: accountId, fields: withFixedFields(merged) });
+    await markFormSubmittedAction(accountId);
     return { ok: true, progress: await getSubmerchantProgress(accountId) };
   } catch (err) {
     if (err instanceof PaymentsError && err.code === "INVALID_FIELDS") {

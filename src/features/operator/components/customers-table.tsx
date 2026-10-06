@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import {
@@ -117,7 +118,12 @@ export function CustomersTable({
   stores: CustomerStore[];
 }) {
   const [query, setQuery] = useState("");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // The open brand lives in the URL so a hard refresh (and the sweep's
+  // router.refresh) keeps whatever the operator was looking at expanded.
+  const openId = searchParams.get("brand");
   const now = useApprovalClock(stores.map((store) => store.completedAt.approved));
   const liveStores = useMemo(
     () =>
@@ -144,9 +150,16 @@ export function CustomersTable({
   const visibleIds = new Set(visible.map((customer) => customer.id));
   const visibleStores = liveStores.filter((store) => visibleIds.has(store.customerId));
 
-  const toggleBrand = (id: string) => {
-    setOpenId((current) => (current === id ? null : id));
-  };
+  const toggleBrand = useCallback(
+    (id: string) => {
+      const params = new URLSearchParams(searchParams);
+      if (openId === id) params.delete("brand");
+      else params.set("brand", id);
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [openId, pathname, router, searchParams],
+  );
 
   return (
     <div className="flex flex-col gap-3">

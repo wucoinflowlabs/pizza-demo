@@ -75,6 +75,7 @@ export default async function AdoraPayPage({ searchParams }: PageProps<"/dashboa
           prefill={{ ...merchantSignupPrefill(login.email), ...sanitizeFormValues(form) }}
           initialProgress={progress}
           backdrop={paymentsChart}
+          openApplication={openApplication}
         />
       </>
     );

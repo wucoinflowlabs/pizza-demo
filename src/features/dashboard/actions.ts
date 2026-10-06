@@ -12,6 +12,7 @@ import {
   type FormValues,
 } from "@/lib/onboarding-form";
 import {
+  getMerchantLogin,
   getMerchantLoginBySubmerchantId,
   saveMerchantLogin,
   setLoginSubmerchantId,
@@ -21,6 +22,8 @@ import { saveOnboardingDraft, submitApplicationForReview, submitOnboardingForm }
 import { findSubmerchantIdByEmail } from "@/lib/payments/submerchants";
 import { createWithAvailableId, toDraftFields } from "@/lib/submerchant-account";
 import { getSubmerchantProgress, type SubmerchantProgress } from "@/lib/payments/verification";
+import { ensureShopRow } from "./shop-row";
+import { markFormSubmittedAction } from "./mark-form-action";
 import {
   endMerchantSession,
   getCurrentAccountId,
@@ -144,11 +147,17 @@ export async function startAdoraPayOnboarding(rawValues: unknown): Promise<Start
     }
   }
 
+  const activeLogin = await getMerchantLogin(email);
+  if (activeLogin) {
+    await ensureShopRow({ login: activeLogin, merchantId, name: text(values, "dba") });
+  }
+
   const current = await getSubmerchantProgress(merchantId);
   if (!current.onboardingFormSubmitted) {
     try {
       await saveOnboardingDraft({ submerchantId: merchantId, fields: toDraftFields(values) });
       await submitOnboardingForm({ submerchantId: merchantId, fields: withFixedFields(values) });
+      await markFormSubmittedAction();
     } catch (err) {
       if (!(err instanceof PaymentsError) || err.code !== "ALREADY_SUBMITTED") {
         if (err instanceof PaymentsError && err.code === "INVALID_FIELDS") {

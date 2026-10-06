@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { describeWebhook } from "@/lib/devtools/labels";
 import { redact } from "@/lib/devtools/redact";
@@ -18,6 +19,16 @@ function isFromCoinflow(authorization: string | null) {
   const received = Buffer.from(authorization);
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
+
+// Events that change what /operator renders (approval pills, settlement sweep
+// state, status timestamps). On any of these, blow the cache so the operator
+// sees fresh data on their next visit.
+const OPERATOR_INVALIDATING_EVENTS = new Set([
+  "Sub-merchant KYB Created",
+  "Sub-merchant KYB Success",
+  "Sub-merchant KYB Failure",
+  "Seller Blocked",
+]);
 
 export async function POST(request: NextRequest) {
   const verified = isFromCoinflow(request.headers.get("authorization"));
@@ -45,5 +56,15 @@ export async function POST(request: NextRequest) {
   });
 
   if (!verified) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (OPERATOR_INVALIDATING_EVENTS.has(eventType)) {
+    // Invalidate the cached /operator render so the next nav shows the fresh
+    // status. The merchant dashboard home card reads enrollment the same way,
+    // so blow its cache too.
+    revalidatePath("/operator");
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/adora-pay");
+  }
+
   return NextResponse.json({ received: true });
 }
