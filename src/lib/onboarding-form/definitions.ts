@@ -152,16 +152,6 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     ],
   },
   {
-    name: "payinMethods",
-    type: "multiselect",
-    label: "Which pay-in methods will you utilize?",
-    placeholder: "Select pay-in methods",
-    required: true,
-    audience: "business",
-    sectionHeader: "Pay-in",
-    options: PAYIN_METHOD_OPTIONS,
-  },
-  {
     name: "payinsMonthlyVolume",
     type: "money-amount",
     label: "Estimated monthly pay-in volume across all pay-in products",
@@ -188,19 +178,9 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     conditional: { dependsOn: "cardNotPresentPercent", value: 0, compare: "gt" },
   },
   {
-    name: "payoutMethods",
-    type: "multiselect",
-    label: "Which payout methods will you utilize?",
-    placeholder: "Select payout methods",
-    required: true,
-    audience: "business",
-    sectionHeader: "Payout",
-    options: PAYOUT_METHOD_OPTIONS,
-  },
-  {
     name: "payoutsMonthlyVolume",
     type: "money-amount",
-    label: "Estimated monthly payout volume across end-user payout products",
+    label: "Estimated monthly payout volume across third-party payout products",
     placeholder: "Estimated monthly payout volume",
     required: true,
     audience: "platform",
@@ -211,6 +191,10 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
 export const HIDDEN_FIELD_NAMES = [
   "businessPhoneCountryCode",
   "whatDoesYourBusinessDo",
+  // Submitted with every form as a pre-checked value from ADORA_PREFILL,
+  // never rendered as a UI control for the merchant to toggle.
+  "payinMethods",
+  "payoutMethods",
   ...Object.keys(FIXED_FIELDS),
   ...WEBSITE_URL_COPIES,
 ] as const;
