@@ -39,7 +39,6 @@ export function SendPayoutDialog({
   container,
   method,
   sandboxUserId,
-  maxCents,
   onSent,
 }: {
   open: boolean;
@@ -47,7 +46,6 @@ export function SendPayoutDialog({
   container: RefObject<HTMLElement | null>;
   method: { title: string; subtitle: string };
   sandboxUserId: string;
-  maxCents: number;
   onSent: () => void;
 }) {
   const [amountInput, setAmountInput] = useState("");
@@ -58,13 +56,8 @@ export function SendPayoutDialog({
   const [idempotencyKey, setIdempotencyKey] = useState("");
 
   const cents = parseCents(amountInput);
-  const overCap = cents !== undefined && cents > maxCents;
   const amountError =
-    amountInput && cents === undefined
-      ? "Enter a dollar amount like 1.00"
-      : overCap
-        ? `At most $${(maxCents / 100).toFixed(2)} per demo payout`
-        : undefined;
+    amountInput && cents === undefined ? "Enter a dollar amount like 1.00" : undefined;
 
   useEffect(() => {
     if (!open) return;
@@ -77,7 +70,7 @@ export function SendPayoutDialog({
   }, [open]);
 
   useEffect(() => {
-    if (!open || cents === undefined || overCap) {
+    if (!open || cents === undefined) {
       setQuoted(null);
       setQuoting(false);
       return;
@@ -94,10 +87,10 @@ export function SendPayoutDialog({
       setQuoting(false);
     }, QUOTE_DEBOUNCE_MS);
     return () => clearTimeout(handle);
-  }, [cents, open, overCap, sandboxUserId]);
+  }, [cents, open, sandboxUserId]);
 
   const send = useCallback(async () => {
-    if (cents === undefined || overCap) return;
+    if (cents === undefined) return;
     setSending(true);
     setError(undefined);
     const result = await sendRealPayoutAction({ sandboxUserId, cents, idempotencyKey });
@@ -109,7 +102,7 @@ export function SendPayoutDialog({
       return;
     }
     setError(result.error);
-  }, [cents, idempotencyKey, method.title, onOpenChange, onSent, overCap, sandboxUserId]);
+  }, [cents, idempotencyKey, method.title, onOpenChange, onSent, sandboxUserId]);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -123,8 +116,7 @@ export function SendPayoutDialog({
           <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-600/20">
             <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
             <span>
-              This fires a <strong>real</strong> Venmo payout from the production Coinflow account. Capped at
-              {` $${(maxCents / 100).toFixed(2)}`} per send.
+              This fires a <strong>real</strong> Venmo payout from the production Coinflow account.
             </span>
           </div>
           <label className="flex flex-col gap-1.5 font-medium">
@@ -172,11 +164,11 @@ export function SendPayoutDialog({
             <Button
               type="button"
               onClick={send}
-              disabled={cents === undefined || overCap || sending || quoting}
+              disabled={cents === undefined || sending || quoting}
               className="bg-shop-ink text-background hover:bg-shop-ink/90"
             >
               {sending ? <Loader2Icon className="animate-spin" /> : <SendIcon />}
-              Send {cents !== undefined && !overCap ? money(cents) : "payout"}
+              Send {cents !== undefined ? money(cents) : "payout"}
             </Button>
           </div>
         </Dialog.Popup>

@@ -34,8 +34,6 @@ async function guard(input: z.input<typeof PayoutInput>): Promise<Guard> {
   if (!parsed.success) return { error: "Enter a valid amount." };
   if (parsed.data.sandboxUserId !== status.userId)
     return { error: "This staff record isn't wired for real payouts." };
-  if (parsed.data.cents > status.maxCents)
-    return { error: `Amount exceeds the demo cap of $${(status.maxCents / 100).toFixed(2)}.` };
   return { data: parsed.data };
 }
 

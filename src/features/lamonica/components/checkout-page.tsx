@@ -19,6 +19,7 @@ import {
 } from "@/features/lamonica/menu";
 import { createLamonicaCheckoutToken } from "@/features/lamonica/checkout-token";
 import { createLamonicaSessionKey } from "@/features/lamonica/session-key";
+import { recordLamonicaPaymentAction } from "@/features/lamonica/record-payment";
 import type { ChargedRates } from "@/features/statements/fee-schedule";
 
 const PAYMENT_METHODS = [
@@ -75,6 +76,9 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
   const [declined, setDeclined] = useState<string>();
   const [paid, setPaid] = useState<PaidOrder>();
   const [frameHeight, setFrameHeight] = useState(680);
+  const [tipDollars, setTipDollars] = useState("");
+  const tipCents = parseTipCents(tipDollars);
+  const totalWithTipCents = cart.totals.totalCents + tipCents;
 
   const handleHeight = useCallback((next: string) => {
     const height = Number(next);
@@ -163,9 +167,26 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
             <dl className="mt-4 space-y-1 border-t border-[#181848]/10 pt-4 text-sm">
               <Row label="Subtotal" value={money(cart.totals.subtotalCents)} />
               <Row label="Tax" value={money(cart.totals.taxCents)} />
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="tip" className="text-[#181848]/80">
+                  Tip for the staff
+                </label>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#181848]/5 px-2 py-0.5 text-sm ring-1 ring-[#181848]/10">
+                  <span className="text-[#181848]/60">$</span>
+                  <input
+                    id="tip"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={tipDollars}
+                    onChange={(event) => setTipDollars(event.target.value)}
+                    className="w-14 bg-transparent text-right text-sm tabular-nums outline-none placeholder:text-[#181848]/40"
+                    aria-label="Tip amount in dollars"
+                  />
+                </span>
+              </div>
               <div className="flex justify-between pt-1 font-heading text-base font-bold">
                 <dt>Total</dt>
-                <dd className="tabular-nums">{money(cart.totals.totalCents)}</dd>
+                <dd className="tabular-nums">{money(totalWithTipCents)}</dd>
               </div>
             </dl>
             <Link href="/lamonica" className="mt-4 inline-block text-sm font-semibold underline">
@@ -302,7 +323,7 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                 jwtToken={checkout.jwtToken}
                 merchantId={LAMONICA_MERCHANT_ID}
                 env={env}
-                subtotal={{ cents: cart.totals.totalCents, currency: Currency.USD }}
+                subtotal={{ cents: totalWithTipCents, currency: Currency.USD }}
                 allowedPaymentMethods={PAYMENT_METHODS}
                 email={customer.email.trim()}
                 supportEmail={SHOP.email}
@@ -343,6 +364,8 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                   orderId,
                   fees: checkout.fees,
                   shop: SHOP.name,
+                  tipCents,
+                  subtotalCents: cart.totals.totalCents,
                   fulfillment: customer.fulfillment,
                   ...(customer.phone.trim() ? { phone: customer.phone.trim() } : {}),
                   address:
@@ -357,12 +380,20 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                 handleHeightChange={handleHeight}
                 onSuccess={(result) => {
                   const paymentId = typeof result === "string" ? result : result.paymentId;
+                  void recordLamonicaPaymentAction({
+                    orderId,
+                    paymentId,
+                    subtotalCents: cart.totals.totalCents,
+                    tipCents,
+                    totalCents: totalWithTipCents,
+                    paymentMethod: "card",
+                  }).catch((err: unknown) => console.error("[lamonica] tip ledger write failed", err));
                   setPaid({
                     paymentId,
                     orderId,
                     fulfillment: customer.fulfillment,
                     address: customer.address.trim(),
-                    totalCents: cart.totals.totalCents,
+                    totalCents: totalWithTipCents,
                   });
                   cart.clear();
                 }}
@@ -461,4 +492,13 @@ function guestId() {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
   return `guest_${hex}`;
+}
+
+/** Dollar amount (e.g. "20" or "4.50") → cents. 0 for empty/invalid. */
+function parseTipCents(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  if (!/^\d+(\.\d{0,2})?$/.test(trimmed)) return 0;
+  const cents = Math.round(Number(trimmed) * 100);
+  return cents > 0 ? cents : 0;
 }

@@ -9,21 +9,18 @@ import { PaymentsError, paymentsErrorFromResponse } from "./errors";
 
 const DEFAULT_BASE_URL = "https://api.coinflow.cash/api";
 const DEFAULT_USER_ID = "teststaff";
-const DEFAULT_MAX_DOLLARS = 25;
 const TIMEOUT_MS = 15_000;
 
 export type RealPayoutStatus = {
   enabled: boolean;
   /** The sandbox user id whose Send button triggers the prod payout. */
   userId: string;
-  maxCents: number;
 };
 
 export function realPayoutStatus(): RealPayoutStatus {
   return {
     enabled: Boolean(process.env.PAYMENTS_PROD_API_KEY),
     userId: (process.env.DEMO_REAL_PAYOUT_USER_ID ?? DEFAULT_USER_ID).trim() || DEFAULT_USER_ID,
-    maxCents: Math.round(Number(process.env.DEMO_REAL_PAYOUT_MAX_DOLLARS ?? DEFAULT_MAX_DOLLARS) * 100) || DEFAULT_MAX_DOLLARS * 100,
   };
 }
 
