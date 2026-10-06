@@ -14,7 +14,7 @@ export const SHOP = {
 
 export const TAX_RATE = 0.095;
 
-export type MenuSection = "Slices" | "Pies" | "Sides" | "Drinks";
+export type MenuSection = "Campus favorites" | "Slices" | "Pies" | "Sides" | "Drinks";
 
 export type MenuItem = {
   id: string;
@@ -22,11 +22,42 @@ export type MenuItem = {
   description: string;
   priceCents: number;
   section: MenuSection;
+  /** Shown struck through when this item is priced below its parts. */
+  compareAtCents?: number;
 };
 
-export const MENU_SECTIONS: MenuSection[] = ["Slices", "Pies", "Sides", "Drinks"];
+export const MENU_SECTIONS: MenuSection[] = ["Campus favorites", "Slices", "Pies", "Sides", "Drinks"];
 
 export const MENU: MenuItem[] = [
+  {
+    id: "combo-game-day",
+    name: "Big Ten Combo",
+    description: "Eight Clap pie, Pauley knots, and four fountain sodas. Packed for the couch before kickoff.",
+    priceCents: 4600,
+    compareAtCents: 5200,
+    section: "Campus favorites",
+  },
+  {
+    id: "slice-bruin",
+    name: "Bruin slice",
+    description: "Pepperoni, hot honey, and a rim that stays crisp on the walk down Gayley.",
+    priceCents: 625,
+    section: "Campus favorites",
+  },
+  {
+    id: "pie-eight-clap",
+    name: "Eight Clap pie",
+    description: "Pepperoni, fennel sausage, and mushrooms. Eight slices, named for the chant.",
+    priceCents: 3200,
+    section: "Campus favorites",
+  },
+  {
+    id: "knots-pauley",
+    name: "Pauley knots",
+    description: "The garlic knots, extra butter, for the crowd leaving the arena.",
+    priceCents: 800,
+    section: "Campus favorites",
+  },
   {
     id: "slice-cheese",
     name: "Cheese slice",
