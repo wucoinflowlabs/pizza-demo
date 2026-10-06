@@ -17,8 +17,10 @@ import {
   money,
   type LamonicaCoinflowEnv,
 } from "@/features/lamonica/menu";
+import { createLamonicaCheckoutToken } from "@/features/lamonica/checkout-token";
 import { createLamonicaSessionKey } from "@/features/lamonica/session-key";
 import { recordLamonicaPaymentAction } from "@/features/lamonica/record-payment";
+import type { ChargedRates } from "@/features/statements/fee-schedule";
 
 const PAYMENT_METHODS = [
   PaymentMethods.card,
@@ -65,6 +67,8 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [step, setStep] = useState<"details" | "pay">("details");
   const [sessionKey, setSessionKey] = useState<string>();
+  /** Signs the amount and Adora's marketplace fee. Single-use, so it's minted per attempt. */
+  const [checkout, setCheckout] = useState<{ jwtToken: string; fees: ChargedRates }>();
   const [keyError, setKeyError] = useState<string>();
   const [starting, setStarting] = useState(false);
   const [orderId, setOrderId] = useState<string>();
@@ -92,13 +96,18 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
     setDeclined(undefined);
     setKeyError(undefined);
     setStep("pay");
-    if (sessionKey) return;
+    setCheckout(undefined);
 
     setStarting(true);
-    const result = await createLamonicaSessionKey(id);
+    const [keyResult, tokenResult] = await Promise.all([
+      sessionKey ? { sessionKey } : createLamonicaSessionKey(id),
+      createLamonicaCheckoutToken({ lines: cart.lines.map(({ id, qty }) => ({ id, qty })) }),
+    ]);
     setStarting(false);
-    if ("sessionKey" in result) setSessionKey(result.sessionKey);
-    else setKeyError(result.error);
+    if ("error" in keyResult) return setKeyError(keyResult.error);
+    if ("error" in tokenResult) return setKeyError(tokenResult.error);
+    setSessionKey(keyResult.sessionKey);
+    setCheckout(tokenResult);
   }
 
   if (paid) {
@@ -109,6 +118,7 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
           setPaid(undefined);
           setStep("details");
           setSessionKey(undefined);
+          setCheckout(undefined);
           setOrderId(undefined);
           setCustomer(EMPTY_CUSTOMER);
         }}
@@ -303,13 +313,14 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
             </div>
           )}
           {starting && <p className="text-sm text-[#181848]/70">Opening checkout…</p>}
-          {sessionKey && orderId && (
+          {sessionKey && checkout && orderId && (
             <div
               className="overflow-hidden rounded-3xl bg-white ring-1 ring-[#181848]/10"
               style={{ height: frameHeight }}
             >
               <CoinflowPurchase
                 sessionKey={sessionKey}
+                jwtToken={checkout.jwtToken}
                 merchantId={LAMONICA_MERCHANT_ID}
                 env={env}
                 subtotal={{ cents: totalWithTipCents, currency: Currency.USD }}
@@ -351,6 +362,7 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                 }))}
                 webhookInfo={{
                   orderId,
+                  fees: checkout.fees,
                   shop: SHOP.name,
                   tipCents,
                   subtotalCents: cart.totals.totalCents,

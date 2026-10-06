@@ -51,7 +51,6 @@ export function MerchantHome({ profile }: { profile: MerchantHomeProfile }) {
                 </h1>
                 <p className="max-w-xl text-lg text-pretty text-shop-on-fill/80">
                   {profile.place ? `${profile.place}. ` : ""}
-                  The counter, the kitchen, and the door, ready for tonight.
                 </p>
               <div className="flex flex-wrap items-center gap-2">
                 {profile.place ? (

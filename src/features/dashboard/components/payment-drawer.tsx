@@ -315,6 +315,18 @@ function AmountBreakdown({ detail, timeZone }: { detail: PaymentDetail; timeZone
           <dd className="tabular-nums">−{money(detail.refundedCents, detail.currency)}</dd>
         </div>
       )}
+      {detail.adoraFeesCents > 0 && (
+        <>
+          <div className="mt-2 flex justify-between gap-2 border-t border-foreground/10 pt-2">
+            <dt>Adora SaaS + royalty</dt>
+            <dd className="tabular-nums">−{money(detail.adoraFeesCents, detail.currency)}</dd>
+          </div>
+          <div className="flex justify-between gap-2 font-medium text-foreground">
+            <dt>Restaurant receives</dt>
+            <dd className="tabular-nums">{money(detail.subtotalCents - detail.adoraFeesCents, detail.currency)}</dd>
+          </div>
+        </>
+      )}
     </dl>
   );
 }

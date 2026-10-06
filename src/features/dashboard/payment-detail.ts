@@ -1,3 +1,4 @@
+import { marketplaceFeeCents } from "@/features/statements/statement";
 import type { CoinflowPaymentDetail } from "@/lib/payments/types";
 import { toOrder, type OrderMethod } from "./orders";
 
@@ -12,6 +13,8 @@ export type PaymentDetail = {
   subtotalCents: number;
   totalCents: number;
   fees: Line[];
+  /** Adora's SaaS fee and the franchise royalty, which Coinflow nets out before the restaurant settles. */
+  adoraFeesCents: number;
   refundedCents: number;
   refundedAt?: string;
   /** Settled payments with something left to refund. */
@@ -171,6 +174,7 @@ export function toPaymentDetail(payment: CoinflowPaymentDetail): PaymentDetail {
     fees: Object.entries(FEE_LABELS)
       .map(([key, label]) => ({ label, cents: totals[key as keyof typeof FEE_LABELS]?.cents ?? 0 }))
       .filter((line) => line.cents !== 0),
+    adoraFeesCents: marketplaceFeeCents(payment),
     refundedCents,
     refundedAt: payment.refundInfo?.refundedAt,
     refundable: !!status && REFUNDABLE_STATUSES.has(status) && refundedCents < subtotalCents,
