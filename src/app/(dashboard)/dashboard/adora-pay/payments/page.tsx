@@ -53,7 +53,7 @@ function PaymentsView({
   location?: string;
 }) {
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8">
+    <div className="mx-auto w-full max-w-[88rem] px-4 py-8">
       {result.ok ? (
         <OrdersTable
           window={window}

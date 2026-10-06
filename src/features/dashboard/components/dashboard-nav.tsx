@@ -239,7 +239,7 @@ function SidebarBody({
   );
 }
 
-/** The signed-in restaurant and the way out, floating in the bottom-right corner of every page. */
+/** The signed-in restaurant and the way out, in the top-right corner of every page. */
 function AccountDock({
   email,
   shop,
@@ -252,7 +252,7 @@ function AccountDock({
   shopLogo?: string;
 }) {
   return (
-    <div className="fixed right-4 bottom-4 z-30 flex max-w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-white/95 p-2.5 shadow-[0_16px_40px_-20px_var(--shop-ink)] ring-1 ring-shop-ink/10 backdrop-blur">
+    <div className="ml-auto flex min-w-0 items-center gap-3 rounded-2xl bg-white/95 p-2.5 shadow-[0_16px_40px_-20px_var(--shop-ink)] ring-1 ring-shop-ink/10 backdrop-blur">
       <AccountMark name={shop} email={email} logo={shopLogo} />
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium text-foreground">{shop || email}</span>
@@ -269,7 +269,7 @@ function AccountDock({
           className="h-8 text-muted-foreground hover:bg-shop-surface hover:text-shop-ink"
         >
           <LogOutIcon />
-          Switch restaurant
+          <span className="sr-only sm:not-sr-only">Switch restaurant</span>
         </Button>
       </form>
     </div>
@@ -338,8 +338,8 @@ export function DashboardShell({
           onNavigate={() => setOpen(false)}
         />
       </aside>
-      <div className="flex min-w-0 flex-1 flex-col bg-gradient-to-b from-shop-surface to-background pb-24">
-        <div className="flex items-center gap-3 border-b border-shop-ink/10 bg-shop-surface/90 px-4 py-3 backdrop-blur md:hidden">
+      <div className="flex min-w-0 flex-1 flex-col bg-gradient-to-b from-shop-surface to-background pb-8">
+        <div className="flex items-center gap-3 border-b border-shop-ink/10 bg-shop-surface/90 px-4 py-3 backdrop-blur md:border-0 md:bg-transparent md:pt-4 md:pb-0 md:backdrop-blur-none">
           <Button
             type="button"
             variant="outline"
@@ -347,15 +347,14 @@ export function DashboardShell({
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
-            className="border-shop-ink/10 bg-white text-shop-ink"
+            className="shrink-0 border-shop-ink/10 bg-white text-shop-ink md:hidden"
           >
             {open ? <XIcon /> : <MenuIcon />}
           </Button>
-          <span className="truncate text-sm font-medium">{shop || email}</span>
+          <AccountDock email={email} shop={shop} subtitle={subtitle} shopLogo={shopLogo} />
         </div>
         {children}
       </div>
-      <AccountDock email={email} shop={shop} subtitle={subtitle} shopLogo={shopLogo} />
     </div>
   );
 }
