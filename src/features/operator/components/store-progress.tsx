@@ -39,14 +39,21 @@ const STEP_CLOCK = new Intl.DateTimeFormat("en-US", {
 const PROGRESS_STEPS = [
   { id: "account", label: "Account creation" },
   { id: "form", label: "Onboarding form submitted" },
+  { id: "kyb", label: "Business verification" },
   { id: "approved", label: "Approved" },
 ] as const;
 
-function progressDone(status: StoreOnboardingStatus): boolean[] {
+function progressDone(
+  status: StoreOnboardingStatus,
+  completedAt?: OnboardingCompletedAt,
+): boolean[] {
   const account = status !== "not-started";
   const formSubmitted =
     status === "form-submitted" || status === "under-review" || status === "approved";
-  return [account, formSubmitted, status === "approved"];
+  // KYB tick follows the completedAt.kyb timestamp, which is set by
+  // onboardingCompletedAt() when Coinflow marks verification approved.
+  const kybDone = Boolean(completedAt?.kyb);
+  return [account, formSubmitted, kybDone, status === "approved"];
 }
 
 function StepTime({ iso }: { iso: string }) {
@@ -71,9 +78,9 @@ export function StoreProgress({
   status: StoreOnboardingStatus;
   completedAt?: OnboardingCompletedAt;
 }) {
-  const done = progressDone(status);
+  const done = progressDone(status, completedAt);
   const current = done.findIndex((step) => !step);
-  const times = [completedAt?.account, completedAt?.form, completedAt?.approved];
+  const times = [completedAt?.account, completedAt?.form, completedAt?.kyb, completedAt?.approved];
 
   return (
     <ol aria-label="Onboarding progress" className="flex shrink-0 items-start">

@@ -16,12 +16,17 @@ type ApplicationProgress = {
   updatedAt?: string;
   /** Set by Coinflow when the application is sent for review. */
   applicationSubmittedAt?: string;
+  /** Set by Supabase when the merchant finished the KYB popup in the dashboard. */
+  kybCompletedAt?: string;
+  /** Set by Supabase when the merchant submitted the onboarding form. */
+  formSubmittedAt?: string;
 };
 
 /** When each operator step was finished. Absent fields have no recorded time. */
 export type OnboardingCompletedAt = {
   account?: string;
   form?: string;
+  kyb?: string;
   approved?: string;
 };
 
@@ -75,7 +80,7 @@ export function revealApproval(
 }
 
 /** Demo gap so approval doesn't land on the same second as form submit. */
-export const SUBMIT_TO_APPROVAL_MS = 5_000;
+export const SUBMIT_TO_APPROVAL_MS = 3_000;
 
 function delayIso(iso: string, ms: number): string {
   const time = Date.parse(iso);
@@ -94,13 +99,28 @@ export function onboardingCompletedAt(
 ): OnboardingCompletedAt {
   if (!application?.createdAt) return {};
   const later = application.updatedAt ?? application.applicationSubmittedAt;
-  const form = application.onboardingFormSubmitted ? later : undefined;
+  // Prefer the frozen Supabase timestamp over Coinflow's drifting updatedAt,
+  // which bumps on later writes (KYB, Submit application) and makes the form
+  // step appear after KYB.
+  const form = application.onboardingFormSubmitted
+    ? application.formSubmittedAt ?? later
+    : undefined;
+  // KYB is marked done the moment the dashboard records it in Supabase
+  // (markKybCompletedAction runs when the merchant finishes the Persona step
+  // or clicks Continue past a sandbox-preapproved case). For merchants that
+  // walked KYB before this column existed, fall back to the application-submit
+  // time — Submit application only unlocks after KYB, so it's a safe inference.
+  const kyb =
+    application.kybCompletedAt ??
+    (application.applicationSubmitted ? application.applicationSubmittedAt : undefined);
+  const approvedBaseline = application.applicationSubmittedAt ?? kyb ?? form ?? later;
   return {
     account: application.createdAt,
     form,
+    kyb,
     approved: application.approved
-      ? form
-        ? delayIso(form, SUBMIT_TO_APPROVAL_MS)
+      ? approvedBaseline
+        ? delayIso(approvedBaseline, SUBMIT_TO_APPROVAL_MS)
         : later
       : undefined,
   };

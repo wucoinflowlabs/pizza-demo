@@ -6,6 +6,7 @@ import { CheckCircle2Icon, Loader2Icon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { SubmerchantProgress } from "@/lib/payments/verification";
+import { markKybCompletedAction } from "@/features/dashboard/kyb-complete-action";
 import { OwnerVerificationStep } from "./owner-verification-step";
 import { PersonaInquiry } from "./persona-inquiry";
 import { StepHeader } from "./step-header";
@@ -27,11 +28,14 @@ export function BusinessVerificationStep({
   progress,
   refresh,
   onProgress,
+  onKybFinished,
   onComplete,
 }: {
   progress: SubmerchantProgress;
   refresh: () => Promise<RefreshResult>;
   onProgress: (progress: SubmerchantProgress) => void;
+  /** Fired once this merchant finishes Persona, or continues past a preapproved case. */
+  onKybFinished?: () => void;
   onComplete: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -57,6 +61,8 @@ export function BusinessVerificationStep({
     } catch {
       // Private browsing can reject storage; this visit still advances.
     }
+    onKybFinished?.();
+    void markKybCompletedAction();
   };
 
   useEffect(() => {
@@ -116,6 +122,9 @@ export function BusinessVerificationStep({
 
   const finish = () => {
     setOpen(false);
+    // Covers the sandbox-preapproved case where Persona never fires onComplete
+    // but the user clicked Continue past the "Business verified" card.
+    rememberFinished();
     onComplete();
   };
 
@@ -257,7 +266,7 @@ export function BusinessVerificationStep({
       <Button
         size="lg"
         className="self-start"
-        onClick={() => (showPersona || !approved ? setOpen(true) : onComplete())}
+        onClick={() => (showPersona || !approved ? setOpen(true) : finish())}
       >
         {showPersona ? "Verify business" : approved ? "Continue" : verified ? "Verify owners" : "Verify business"}
       </Button>
