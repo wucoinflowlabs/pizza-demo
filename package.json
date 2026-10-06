@@ -13,6 +13,7 @@
     "@coinflowlabs/react": "^5.22.2",
     "@faker-js/faker": "^10.6.0",
     "@hookform/resolvers": "^5.9.1",
+    "@react-pdf/renderer": "^4.9.0",
     "@solana/web3.js": "^1.99.0",
     "@supabase/supabase-js": "^2.117.2",
     "@upstash/redis": "^1.39.0",

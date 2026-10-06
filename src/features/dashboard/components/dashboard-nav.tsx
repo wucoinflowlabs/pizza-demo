@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   ChefHatIcon,
   CreditCardIcon,
+  FileTextIcon,
   GiftIcon,
   GlobeIcon,
   HouseIcon,
@@ -96,7 +97,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLinks({ onNavigate, franchise }: { onNavigate?: () => void; franchise?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -134,6 +135,16 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         onNavigate={onNavigate}
         accent
       />
+      {franchise && (
+        <NavItem
+          href="/dashboard/adora-pay/statements"
+          label="Statements"
+          icon={FileTextIcon}
+          active={pathname === "/dashboard/adora-pay/statements"}
+          onNavigate={onNavigate}
+          accent
+        />
+      )}
       <SectionLabel>Withdrawals</SectionLabel>
       <NavItem
         href="/dashboard/adora-pay/withdraws"
@@ -202,6 +213,7 @@ function SidebarBody({
   name,
   subtitle,
   shopLogo,
+  franchise,
   onNavigate,
 }: {
   logo: ReactNode;
@@ -209,6 +221,7 @@ function SidebarBody({
   name?: string | null;
   subtitle?: string;
   shopLogo?: string;
+  franchise?: boolean;
   onNavigate?: () => void;
 }) {
   const shop = name?.trim();
@@ -227,7 +240,7 @@ function SidebarBody({
         aria-hidden
         className="mx-1.5 mt-5 mb-4 h-px bg-gradient-to-r from-transparent via-shop-accent/35 to-transparent"
       />
-      <NavLinks onNavigate={onNavigate} />
+      <NavLinks onNavigate={onNavigate} franchise={franchise} />
       <div className="mt-6 rounded-2xl bg-white p-3 shadow-[0_16px_40px_-28px_var(--shop-ink)] ring-1 ring-shop-ink/10">
         <div className="flex items-center gap-2.5 px-0.5">
           <AccountMark name={shop} email={email} logo={shopLogo} />
@@ -262,6 +275,7 @@ export function DashboardShell({
   name,
   subtitle,
   shopLogo,
+  franchise,
   theme,
   children,
 }: {
@@ -271,6 +285,8 @@ export function DashboardShell({
   /** Shown under the name in place of the email, e.g. for a franchise owner. */
   subtitle?: string;
   shopLogo?: string;
+  /** A franchise owner, who also gets the Statements page. */
+  franchise?: boolean;
   theme: ShopTheme;
   children: ReactNode;
 }) {
@@ -285,7 +301,14 @@ export function DashboardShell({
   return (
     <div className="flex min-h-full flex-1" style={shopThemeStyle(theme)}>
       <aside className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-shop-ink/10 bg-gradient-to-b from-shop-surface via-shop-surface to-background md:flex">
-        <SidebarBody logo={logo} email={email} name={name} subtitle={subtitle} shopLogo={shopLogo} />
+        <SidebarBody
+          logo={logo}
+          email={email}
+          name={name}
+          subtitle={subtitle}
+          shopLogo={shopLogo}
+          franchise={franchise}
+        />
       </aside>
       {open && (
         <button
@@ -307,6 +330,7 @@ export function DashboardShell({
           name={name}
           subtitle={subtitle}
           shopLogo={shopLogo}
+          franchise={franchise}
           onNavigate={() => setOpen(false)}
         />
       </aside>

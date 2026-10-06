@@ -30,6 +30,7 @@ Every Coinflow API call the app makes to onboard a merchant, in the order it hap
 | 18 | `GET` | `/merchant/withdraws?since=&until=&search=&page=&limit=` | ✓ | List withdrawals for the Withdraws table |
 | 19 | `GET` | `/merchant/withdraws/{transferId}` | ✓ | Load one withdrawal for the Withdraws drawer |
 | 20 | `GET` | `/merchant/withdraws/{transferId}/enhanced` | ✓ | Recipient phone/email/card for Venmo, PayPal and card withdrawals |
+| 21 | `POST` | `/checkout/jwt-token` | ✓ | Sign a checkout's amount and Adora's marketplace fee (`feePercentage`) |
 
 ## Main flow: operator invite, then `/apply`
 
@@ -85,3 +86,11 @@ Staff become withdrawers through the parent key acting as the sub-merchant *and*
 1. **`POST /withdraw/kyc`** `{info: {email, firstName, surName, physicalAddress, city, state, zip, country, dob, ssn}}`. Sandbox auto-approves US KYC; ssn `1111` + zip `11111` stays pending, ssn `9999` is rejected.
 2. **`POST /withdraw/venmo`** `{phoneNumber}` and **`POST /withdraw/paypal`** `{email}` link payout methods (approved withdrawers only).
 3. **`POST /merchant/withdraws/payout/delegated`** `{userId, amount, speed, account: <method token>, idempotencyKey}` pays tips from the sub-merchant's Coinflow wallet (`GET /merchant/withdraws/payout/balance`).
+
+## Checkout fees and daily statements (`/lamonica/checkout`, `/dashboard/adora-pay/statements`)
+
+Code: `src/features/statements/`, `src/lib/payments/checkout.ts`, `src/features/lamonica/checkout-token.ts`, `src/app/api/statements/daily/route.ts`
+
+- **`POST /checkout/jwt-token`** (*as sub-merchant*) runs when a diner continues to payment. The body has the order `subtotal`, recomputed from the menu on the server, and `feePercentage` = Adora SaaS + franchise royalty from the fee schedule (`fee-schedule.ts`, default 0.50% + 6.00%). Coinflow takes that percentage from the subtotal before the sub-merchant settles. `webhookInfo.fees` stamps the rates charged (`{ version, saasBps, royaltyBps }`), and `GET /merchant/payments` echoes `webhookInfo` back, so the statement can split the combined fee into SaaS and royalty. The returned `checkoutJwtToken` is passed to `<CoinflowPurchase jwtToken>`; it is single-use, so each checkout attempt mints a new one.
+- **`GET /merchant/payments`** (*as sub-merchant*) feeds the statements. List rows carry the full `totals`, including `merchantPaid*Fees`. The statement deducts only those merchant-paid processing fees from the restaurant; the diner-paid fees (`creditCardFees` etc.) are shown as pass-through. The hardware program is a flat daily charge from the fee schedule and is not collected through Coinflow.
+- The statements tracker makes one list call per location for the last 14 days and buckets payments by business day (Pacific). The PDF (`GET /api/statements/daily?date=&location=<store id>|all`) is rendered with `@react-pdf/renderer` and is available to franchise owners only.

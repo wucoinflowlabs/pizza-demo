@@ -18,6 +18,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
         name={customer.name}
         subtitle={`Franchise owner · ${franchiseSummary(franchise)}`}
         shopLogo={customer.logo}
+        franchise
         theme={shopTheme({ name: customer.name })}
       >
         {children}
