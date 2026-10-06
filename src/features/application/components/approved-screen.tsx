@@ -139,11 +139,16 @@ export function ApprovedScreen({ businessName }: { businessName?: string }) {
         </CardContent>
       </Card>
       <PayoutSetupCard />
-      <form action={signInAsCurrentAccount} className="self-start">
-        <Button type="submit" size="lg">
-          Sign in to merchant dashboard
+      <div className="flex flex-wrap items-center gap-3 self-start">
+        <form action={signInAsCurrentAccount}>
+          <Button type="submit" size="lg">
+            Sign in to merchant dashboard
+          </Button>
+        </form>
+        <Button type="button" variant="outline" size="lg">
+          Onboard another shop
         </Button>
-      </form>
+      </div>
     </div>
   );
 }

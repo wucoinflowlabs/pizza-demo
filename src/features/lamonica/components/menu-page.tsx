@@ -13,15 +13,15 @@ export function MenuPage() {
       <section className="bg-[#181848] text-[#FFF6E2]">
         <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1.3fr_0.7fr] lg:py-16">
           <div>
-            <p className="text-xs font-semibold tracking-[0.22em] text-[#F0A020] uppercase">
-              Since the neighborhood got hungry
+            <p className="text-xs font-semibold tracking-[0.22em] text-[#FFD100] uppercase">
+              Westwood · A short walk from UCLA
             </p>
             <h1 className="mt-3 font-heading text-5xl font-bold tracking-tight text-balance sm:text-6xl">
               New York pizza, on Gayley.
             </h1>
             <p className="mt-4 max-w-xl text-lg text-[#FFF6E2]/80">
-              Whole pies and late slices from {SHOP.address}. Order for pickup at the counter, or
-              delivery around Westwood.
+              Whole pies for the apartment and late slices after Pauley. Pickup at {SHOP.address},
+              or delivery to the dorms and the village.
             </p>
             <a
               href="#menu"
@@ -39,6 +39,22 @@ export function MenuPage() {
             className="mx-auto w-full max-w-sm"
           />
         </div>
+        <div className="h-2 bg-[#2774AE]" />
+        <div className="h-2 bg-[#FFD100]" />
+      </section>
+
+      <section className="border-b border-[#2774AE]/15 bg-white">
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 md:grid-cols-3">
+          {CAMPUS.map((note) => (
+            <div key={note.title}>
+              <p className="text-xs font-semibold tracking-[0.16em] text-[#2774AE] uppercase">
+                {note.kicker}
+              </p>
+              <h2 className="mt-1 font-heading text-lg font-bold">{note.title}</h2>
+              <p className="mt-1 text-sm leading-relaxed text-[#181848]/70">{note.body}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_320px] lg:items-start">
@@ -47,11 +63,57 @@ export function MenuPage() {
             <section key={section} className="mb-10">
               <h2 className="font-heading text-2xl font-bold tracking-tight">
                 {section}
-                <span className="mt-2 block h-1 w-12 bg-[#F0A020]" />
+                <span
+                  className={`mt-2 block h-1 w-12 ${
+                    section === "Campus favorites" ? "bg-[#2774AE]" : "bg-[#F0A020]"
+                  }`}
+                />
               </h2>
               <ul>
                 {MENU.filter((item) => item.section === section).map((item) => {
                   const qty = cart.lines.find((line) => line.id === item.id)?.qty ?? 0;
+                  if (item.compareAtCents) {
+                    return (
+                      <li key={item.id} className="py-4">
+                        <div className="flex flex-col gap-4 rounded-3xl bg-[#2774AE] p-5 text-white sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-xs font-semibold tracking-[0.16em] text-[#FFD100] uppercase">
+                              Combo · Save {money(item.compareAtCents - item.priceCents)}
+                            </p>
+                            <h3 className="mt-1 font-heading text-2xl font-bold">{item.name}</h3>
+                            <p className="mt-1 max-w-md text-sm leading-relaxed text-white/80">
+                              {item.description}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-4 sm:flex-col sm:items-end">
+                            <p className="font-heading text-2xl font-bold tabular-nums">
+                              {money(item.priceCents)}
+                              <span className="ml-2 text-base font-semibold text-white/60 line-through">
+                                {money(item.compareAtCents)}
+                              </span>
+                            </p>
+                            {qty > 0 ? (
+                              <QtyControl
+                                qty={qty}
+                                label={item.name}
+                                onDec={() => cart.setQty(item.id, qty - 1)}
+                                onInc={() => cart.add(item.id)}
+                                light
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => cart.add(item.id)}
+                                className="rounded-full bg-[#FFD100] px-4 py-2 text-sm font-semibold text-[#181848]"
+                              >
+                                Add combo
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  }
                   return (
                     <li
                       key={item.id}
@@ -96,19 +158,43 @@ export function MenuPage() {
   );
 }
 
+const CAMPUS = [
+  {
+    kicker: "Two blocks up",
+    title: "Downhill from campus",
+    body: "Gayley is the walk from Royce and Powell. Most orders are ready before you cross Le Conte.",
+  },
+  {
+    kicker: "The 8-clap",
+    title: "Big Ten Combo",
+    body: "The Eight Clap, Pauley knots, and four sodas, packed before kickoff. Pickup at the counter, or we run it up Landfair.",
+  },
+  {
+    kicker: "Open until 2",
+    title: "After the library",
+    body: "Slices stay on the counter past midnight. Ask for the Bruin if the case looks picked over.",
+  },
+];
+
 function QtyControl({
   qty,
   label,
   onDec,
   onInc,
+  light = false,
 }: {
   qty: number;
   label: string;
   onDec: () => void;
   onInc: () => void;
+  light?: boolean;
 }) {
   return (
-    <div className="flex items-center rounded-full border border-[#181848]/15 bg-white">
+    <div
+      className={`flex items-center rounded-full border bg-white ${
+        light ? "border-white/30 text-[#181848]" : "border-[#181848]/15"
+      }`}
+    >
       <button
         type="button"
         aria-label={`Remove one ${label}`}

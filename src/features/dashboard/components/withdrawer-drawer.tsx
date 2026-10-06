@@ -22,6 +22,7 @@ import {
   Loader2Icon,
   ReceiptTextIcon,
   ScrollTextIcon,
+  SendIcon,
   ShieldBanIcon,
   ShieldCheckIcon,
   UserRoundIcon,
@@ -35,7 +36,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Toaster } from "@/components/ui/sonner";
+import { realPayoutStatusAction } from "../real-payout-actions";
 import { setWithdrawerAvailabilityAction } from "../withdrawer-actions";
+import type { RealPayoutStatus } from "@/lib/payments/real-payout";
+import { SendPayoutDialog } from "./send-payout-dialog";
 import type { PayoutMethodGroup, WithdrawerProfile, WithdrawerRow, WithdrawRow } from "../withdrawals";
 import { CopyableId, shortId, useCopy } from "./payment-pills";
 import { POPUP } from "./table-controls";
@@ -134,11 +138,14 @@ function MethodRow({
   title,
   subtitle,
   copyValue,
+  onSend,
 }: {
   kind: PayoutMethodGroup["kind"] | "key";
   title: string;
   subtitle: string;
   copyValue: string;
+  /** Set when a real demo payout is available for this row. */
+  onSend?: () => void;
 }) {
   const { copied, copy } = useCopy();
   return (
@@ -148,14 +155,27 @@ function MethodRow({
         <p className="truncate font-medium text-foreground">{title}</p>
         <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
       </div>
-      <button
-        type="button"
-        onClick={() => copy(copyValue)}
-        aria-label={`Copy ${kind === "key" ? "reference ID" : "method token"}`}
-        className={ICON_BUTTON}
-      >
-        {copied ? <BadgeCheckIcon className="size-4 text-emerald-600" /> : <CopyIcon className="size-4" />}
-      </button>
+      <span className="flex items-center gap-0.5">
+        {onSend && (
+          <button
+            type="button"
+            onClick={onSend}
+            aria-label="Send payout"
+            title="Send a real Venmo payout"
+            className={ICON_BUTTON}
+          >
+            <SendIcon className="size-4" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => copy(copyValue)}
+          aria-label={`Copy ${kind === "key" ? "reference ID" : "method token"}`}
+          className={ICON_BUTTON}
+        >
+          {copied ? <BadgeCheckIcon className="size-4 text-emerald-600" /> : <CopyIcon className="size-4" />}
+        </button>
+      </span>
     </div>
   );
 }
@@ -266,7 +286,14 @@ function ActivityTab({ row, profile, timeZone }: { row: WithdrawerRow; profile: 
   );
 }
 
-function MethodsTab({ profile }: { profile: WithdrawerProfile }) {
+function MethodsTab({
+  profile,
+  onSendPayout,
+}: {
+  profile: WithdrawerProfile;
+  /** Set when the viewer may fire a real Venmo payout for this withdrawer. */
+  onSendPayout?: (method: { title: string; subtitle: string }) => void;
+}) {
   if (profile.methodCount === 0) {
     return (
       <SectionCard title="Methods">
@@ -285,6 +312,7 @@ function MethodsTab({ profile }: { profile: WithdrawerProfile }) {
               title={method.title}
               subtitle={method.subtitle}
               copyValue={method.token}
+              onSend={group.kind === "venmo" && onSendPayout ? () => onSendPayout({ title: method.title, subtitle: method.subtitle }) : undefined}
             />
           ))}
         </SectionCard>
@@ -541,7 +569,21 @@ export function WithdrawerDrawer({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<Tab>("overview");
   const [blocking, setBlocking] = useState(false);
+  const [realPayout, setRealPayout] = useState<RealPayoutStatus | null>(null);
+  const [pendingPayout, setPendingPayout] = useState<{ title: string; subtitle: string } | null>(null);
   const router = useRouter();
+
+  // Fetch the real-payout status once per drawer open. Cached across renders.
+  useEffect(() => {
+    if (realPayout) return;
+    let active = true;
+    realPayoutStatusAction().then((status) => {
+      if (active) setRealPayout(status);
+    });
+    return () => {
+      active = false;
+    };
+  }, [realPayout]);
 
   const id = withdrawer?.id;
   const profile = id ? profiles[id] : undefined;
@@ -666,7 +708,14 @@ export function WithdrawerDrawer({
                   ) : tab === "activity" ? (
                     <ActivityTab row={withdrawer} profile={profile} timeZone={timeZone} />
                   ) : tab === "methods" ? (
-                    <MethodsTab profile={profile} />
+                    <MethodsTab
+                      profile={profile}
+                      onSendPayout={
+                        realPayout?.enabled && withdrawer.wallet === realPayout.userId
+                          ? (method) => setPendingPayout(method)
+                          : undefined
+                      }
+                    />
                   ) : (
                     <AuditTab profile={profile} timeZone={timeZone} />
                   )}
@@ -681,6 +730,17 @@ export function WithdrawerDrawer({
                     router.refresh();
                   }}
                 />
+                {realPayout?.enabled && (
+                  <SendPayoutDialog
+                    open={pendingPayout !== null}
+                    onOpenChange={(open) => !open && setPendingPayout(null)}
+                    container={container}
+                    method={pendingPayout ?? { title: "", subtitle: "" }}
+                    sandboxUserId={realPayout.userId}
+                    maxCents={realPayout.maxCents}
+                    onSent={() => router.refresh()}
+                  />
+                )}
               </>
             )}
           </Dialog.Popup>

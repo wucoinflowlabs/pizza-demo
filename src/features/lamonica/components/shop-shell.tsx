@@ -26,7 +26,7 @@ function ShopHeader() {
   return (
     <header className="sticky top-0 z-30">
       <div className="bg-[#F0A020] px-4 py-1.5 text-center text-xs font-semibold tracking-[0.18em] text-[#181848] uppercase">
-        Westwood · {SHOP.hours}
+        Steps from UCLA · {SHOP.hours}
       </div>
       <div className="border-b border-[#181848]/10 bg-[#181848] text-[#FFF6E2]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
