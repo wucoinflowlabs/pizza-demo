@@ -46,13 +46,11 @@ export function toCreateBody({
       privacyPolicyUrl: websiteUrls[0],
       termsOfServiceUrl: websiteUrls[0],
       returnPolicyUrl: websiteUrls[0],
-      payinMethods: text(values, "payinMethods"),
-      payoutMethods: text(values, "payoutMethods"),
     }).filter(([, value]) => value !== undefined),
   ) as unknown as CreateSubmerchantInput;
 }
 
-export function toDraftFields(values: FormValues): FormValues {
+export function toDraftFields(values: FormValues): Record<string, unknown> {
   const rest = Object.fromEntries(
     Object.entries(values).filter(
       ([name]) => !CREATE_KEYS.has(name) && !name.startsWith("websiteUrl"),

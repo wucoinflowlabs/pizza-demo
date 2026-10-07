@@ -1,13 +1,9 @@
 import type { FieldDefinition, FormValues, SelectOption } from "./types";
 
-// Visible questions are the Adora peel-back of Coinflow's legacy v2 form.
-// Everything else Coinflow still requires is filled in with HIDDEN_DEFAULTS
-// at submit time and never shown to the merchant.
-
-const YES_NO: readonly SelectOption[] = [
-  { label: "Yes", value: "yes" },
-  { label: "No", value: "no" },
-];
+// SDD (Simplified Due Diligence) onboarding — the lightweight schema Coinflow
+// uses for ISV sub-merchants. Visible questions stay minimal; every other
+// SDD-required field is filled in from FIXED_FIELDS / ADORA_PREFILL and
+// never shown to the merchant.
 
 export const REGION_OPTIONS: readonly SelectOption[] = [
   "US",
@@ -31,58 +27,26 @@ const PAYIN_METHOD_OPTIONS: readonly SelectOption[] = [
   { value: "venmo", label: "Venmo" },
 ];
 
-const PAYOUT_METHOD_OPTIONS: readonly SelectOption[] = [
-  { value: "standard", label: "ACH" },
-  { value: "asap", label: "RTP" },
-  { value: "card", label: "Push-to-Card" },
-  { value: "venmo", label: "Venmo" },
-  { value: "paypal", label: "PayPal" },
-];
-
 /** Sent on every application and never asked. Fills only keys the merchant left empty. */
 export const FIXED_FIELDS = {
   industry: "foodBeverage",
-  products: "checkout,userPayouts",
-  settlementMethods: "bankAccountSettlement",
-  bankSettlementMethods: "ach,wire",
-  businessCountryOfIncorporation: "US",
-  endUserGeoDistribution: [{ region: "US", percentage: 100 }],
-  activeCustomers: "10,000 - 100,000",
-  customerSupportMethods: "live",
   payinsAverageTransactionSize: { currency: "usd", amount: 60 },
   payinsMaximumTransactionSize: { currency: "usd", amount: 1_000 },
-  payoutsAverageTransactionSize: { currency: "usd", amount: 40 },
-  payoutsMaximumTransactionSize: { currency: "usd", amount: 1_000 },
-  payoutsMonthlyVolume: { currency: "usd", amount: 10_000 },
-  pciComplianceStatus: "no",
-  historicalChargebackRate: "<0.25%",
-  averageDollarValueChargeback: "25",
-  paymentProcessingAgreementTerminated: "no",
-  // Coinflow requires a non-empty string once acceptedPaymentsBefore is yes.
-  // Not a file key (those start with merchants/), so review won't try to download it.
-  processingStatements: "Collected by Adora",
 } satisfies FormValues;
 
-/** Answers Adora already knows. Every pay-in and payout method starts checked. */
+/** Answers Adora already knows. Every pay-in method starts checked. */
 export const ADORA_PREFILL: FormValues = {
-  acceptedPaymentsBefore: "yes",
   currentRunway: ">18 months/profitable",
   payinsMonthlyVolume: { currency: "usd", amount: 10_000 },
   cardNotPresentPercent: "40",
   payinMethods: PAYIN_METHOD_OPTIONS.map((option) => option.value).join(","),
-  payoutMethods: PAYOUT_METHOD_OPTIONS.map((option) => option.value).join(","),
 };
 
 /** UI-only. Drives whether the website question is shown, then stripped before Coinflow. */
 export const UI_ONLY_FIELDS = ["cardNotPresentPercent"] as const;
 
-/** Also never asked: the testing URL and every policy link are the business's website. */
-export const WEBSITE_URL_COPIES = [
-  "developmentUrl",
-  "privacyPolicyUrl",
-  "termsOfServiceUrl",
-  "returnPolicyUrl",
-] as const;
+/** The business website doubles as the dev URL and the checkout URL for SDD. */
+export const WEBSITE_URL_COPIES = ["developmentUrl", "checkoutUrl"] as const;
 
 export function businessOverview({ name, place }: { name: string; place: string }): string {
   return `${name}, based in ${place}, runs on Adora. Guests order in the store and through Adora online ordering.`;
@@ -162,8 +126,6 @@ export const HIDDEN_FIELD_NAMES = [
   // Submitted with every form as a pre-checked value from ADORA_PREFILL,
   // never rendered as a UI control for the merchant to toggle.
   "payinMethods",
-  "payoutMethods",
-  "acceptedPaymentsBefore",
   "currentRunway",
   ...Object.keys(FIXED_FIELDS),
   ...WEBSITE_URL_COPIES,

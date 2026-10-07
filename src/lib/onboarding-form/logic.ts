@@ -193,8 +193,12 @@ export function sanitizeFormValues(input: unknown): FormValues {
   return result;
 }
 
-/** Fills hidden Coinflow answers without overwriting anything the merchant entered. */
-export function withFixedFields(values: FormValues): FormValues {
+/**
+ * Fills hidden Coinflow answers without overwriting anything the merchant
+ * entered, and injects the SDD-specific terms-acknowledgement boolean. The
+ * returned shape widens from FormValues to allow the boolean key SDD requires.
+ */
+export function withFixedFields(values: FormValues): Record<string, unknown> {
   const next: FormValues = { ...values };
   for (const name of UI_ONLY_FIELDS) delete next[name];
 
@@ -206,8 +210,6 @@ export function withFixedFields(values: FormValues): FormValues {
   }
 
   for (const [name, value] of Object.entries(FIXED_FIELDS)) {
-    if (name === "historicalChargebackRate" || name === "averageDollarValueChargeback") continue;
-    if (name === "paymentProcessingAgreementTerminated" || name === "processingStatements") continue;
     if (!hasValue(next[name])) next[name] = value;
   }
 
@@ -216,20 +218,7 @@ export function withFixedFields(values: FormValues): FormValues {
     next.whatDoesYourBusinessDo = businessOverview({ name, place: "their city" });
   }
 
-  if (next.acceptedPaymentsBefore === "yes") {
-    if (!hasValue(next.historicalChargebackRate))
-      next.historicalChargebackRate = FIXED_FIELDS.historicalChargebackRate;
-    if (!hasValue(next.averageDollarValueChargeback))
-      next.averageDollarValueChargeback = FIXED_FIELDS.averageDollarValueChargeback;
-    if (!hasValue(next.paymentProcessingAgreementTerminated))
-      next.paymentProcessingAgreementTerminated = FIXED_FIELDS.paymentProcessingAgreementTerminated;
-    if (!hasValue(next.processingStatements))
-      next.processingStatements = FIXED_FIELDS.processingStatements;
-  } else {
-    delete next.processingStatements;
-  }
-
-  return next;
+  return { ...next, checkoutUrlTermsAcknowledged: true };
 }
 
 /** Drops empty strings/arrays so drafts don't overwrite stored answers with blanks. */
