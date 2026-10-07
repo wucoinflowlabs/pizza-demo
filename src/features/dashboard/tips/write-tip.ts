@@ -35,28 +35,49 @@ export async function recordCheckoutPayment({
 }
 
 /**
- * Adds `tipCents` to an existing payment's `tip_cents` and bumps the total.
- * Called after a successful Coinflow tip-adjust-and-capture.
+ * Adds `tipCents` to a payment's `tip_cents` and bumps the total, inserting
+ * the row when the payment isn't in the ledger yet so the tip still accrues.
+ * Called after a successful Coinflow tip-adjust-and-capture; `capturedCents`
+ * is the captured amount, which already includes the tip.
  */
 export async function addTipToCheckoutPayment({
   cfPaymentId,
   tipCents,
+  capturedCents,
 }: {
   cfPaymentId: string;
   tipCents: number;
+  capturedCents: number;
 }): Promise<void> {
   if (tipCents <= 0) return;
   const supabase = getSupabaseAdmin();
-  const { data: row, error: readErr } = await supabase
-    .from("payments")
-    .select("tip_cents,subtotal_cents")
-    .eq("payment_id", cfPaymentId)
-    .maybeSingle();
+  const readRow = () =>
+    supabase.from("payments").select("tip_cents,subtotal_cents").eq("payment_id", cfPaymentId).maybeSingle();
+
+  let { data: row, error: readErr } = await readRow();
   if (readErr) {
     console.error("[tips] tip adjust lookup failed", readErr);
     return;
   }
-  if (!row) return;
+  if (!row) {
+    const { error: insertErr } = await supabase.from("payments").insert({
+      payment_id: cfPaymentId,
+      subtotal_cents: capturedCents - tipCents,
+      tip_cents: tipCents,
+      total_cents: capturedCents,
+    });
+    if (!insertErr) return;
+    // 23505: a sync or webhook created the row in the meantime, so add the tip to it instead.
+    if (insertErr.code !== "23505") {
+      console.error("[tips] tip adjust insert failed", insertErr);
+      return;
+    }
+    ({ data: row, error: readErr } = await readRow());
+    if (readErr || !row) {
+      console.error("[tips] tip adjust lookup failed", readErr);
+      return;
+    }
+  }
 
   const nextTip = row.tip_cents + tipCents;
   const { error: updateErr } = await supabase

@@ -131,7 +131,7 @@ export async function tipAdjustAndCaptureAction(
       : { ok: false, stage: "increment", error };
   }
 
-  await addTipToCheckoutPayment({ cfPaymentId: paymentId, tipCents }).catch((err: unknown) =>
+  await addTipToCheckoutPayment({ cfPaymentId: paymentId, tipCents, capturedCents: subtotalCents }).catch((err: unknown) =>
     console.error("[tips] tip adjust ledger write failed", err),
   );
   return { ok: true, capturedCents: subtotalCents };
