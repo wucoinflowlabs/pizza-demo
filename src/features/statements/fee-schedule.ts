@@ -1,7 +1,6 @@
 /**
- * What Adora and the franchisor take from each restaurant's sales. SaaS and
- * royalty are collected by Coinflow on every payment as one marketplace fee;
- * the hardware program is a flat daily charge billed on the statement.
+ * Adora's take rate on each restaurant's sales, collected by Coinflow on every
+ * payment as one marketplace fee. Statements call it the processing fee.
  */
 export type FeeSchedule = {
   /** Stamped on each payment so a statement can tell which rates it was charged. */
@@ -12,8 +11,6 @@ export type FeeSchedule = {
   saasFixedCents: number;
   /** Franchise royalty, in basis points of gross sales. Adora collects it and remits it to the franchisor. */
   royaltyBps: number;
-  /** Terminal and hardware lease, per location per day. */
-  hardwareDailyCents: number;
 };
 
 /** The rates a payment was charged, as stamped in its `webhookInfo.fees`. */
@@ -24,8 +21,18 @@ export const DEFAULT_FEE_SCHEDULE: FeeSchedule = {
   saasBps: 249,
   saasFixedCents: 30,
   royaltyBps: 0,
-  hardwareDailyCents: 330,
 };
+
+/** Charges that only appear on statements. Never sent to Coinflow. */
+export const STATEMENT_CHARGES = {
+  saasMonthlyCents: 6_900,
+  hardwareMonthlyCentsPerDevice: 8_000,
+  devicesPerLocation: 2,
+  /** Paid to the franchise owner, in basis points of gross sales. */
+  franchiseFeeBps: 500,
+};
+
+export type StatementCharges = typeof STATEMENT_CHARGES;
 
 /** Franchise-specific terms, keyed by Adora customer id. */
 const OVERRIDES: Record<string, Partial<FeeSchedule>> = {};

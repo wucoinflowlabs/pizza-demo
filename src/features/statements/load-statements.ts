@@ -5,7 +5,7 @@ import { dayIn, rangeBounds } from "@/features/dashboard/withdraw-range";
 import { PaymentsError } from "@/lib/payments/errors";
 import { listMerchantPayments } from "@/lib/payments/payments";
 import type { CoinflowPayment } from "@/lib/payments/types";
-import { feeScheduleFor } from "./fee-schedule";
+import { STATEMENT_CHARGES, feeScheduleFor } from "./fee-schedule";
 import {
   buildDailyStatement,
   buildFranchiseSummary,
@@ -80,6 +80,7 @@ function statementsFor({
     buildDailyStatement({
       payments,
       schedule,
+      charges: STATEMENT_CHARGES,
       franchise: { id: franchise.customer.id, name: franchise.customer.name },
       location: toStatementLocation(location),
       day,

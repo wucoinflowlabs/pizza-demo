@@ -1,11 +1,10 @@
 import { DownloadIcon, ExternalLinkIcon } from "lucide-react";
 import { cn } from "cn";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FailedLocations, LocationPicker, type LocationOption } from "@/features/dashboard/components/table-controls";
-import { formatBps, formatSaasRate, type FeeSchedule } from "../fee-schedule";
 import type { StatementDay } from "../load-statements";
 
 function money(cents: number) {
@@ -36,7 +35,6 @@ export function StatementsTable({
   today,
   locations,
   location,
-  schedule,
   failedLocations = [],
   error,
 }: {
@@ -45,7 +43,6 @@ export function StatementsTable({
   locations: LocationOption[];
   /** The picked store, or undefined for all locations. */
   location?: string;
-  schedule: FeeSchedule;
   failedLocations?: string[];
   error?: string;
 }) {
@@ -56,11 +53,6 @@ export function StatementsTable({
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-shop-ink">Daily statements</CardTitle>
-        <CardDescription>
-          Every settled payment, with Adora&apos;s SaaS fee ({formatSaasRate(schedule)} per payment) and processing, the
-          hardware program ({money(schedule.hardwareDailyCents)}/day per location) and your royalty (
-          {formatBps(schedule.royaltyBps)}) netted out. Business days run midnight to midnight Pacific.
-        </CardDescription>
         {net !== undefined && (
           <CardAction className="text-right">
             <p className="font-heading text-2xl font-semibold text-shop-ink sm:text-3xl">{money(net)}</p>
@@ -99,9 +91,10 @@ export function StatementsTable({
                   <TableHead className="pl-6">Business day</TableHead>
                   <TableHead className="text-right">Payments</TableHead>
                   <TableHead className="text-right">Gross sales</TableHead>
-                  <TableHead className="text-right">Adora SaaS + processing</TableHead>
+                  <TableHead className="text-right">Processing</TableHead>
+                  <TableHead className="text-right">Franchise fee</TableHead>
+                  <TableHead className="text-right">SaaS</TableHead>
                   <TableHead className="text-right">Hardware</TableHead>
-                  <TableHead className="text-right">Royalty</TableHead>
                   <TableHead className="text-right">Net deposit</TableHead>
                   <TableHead className="pr-6">
                     <span className="sr-only">Statement</span>
@@ -117,12 +110,12 @@ export function StatementsTable({
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-foreground/80">{totals.count}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(totals.grossCents)}</TableCell>
-                    {/* Both are netted by Adora as the parent merchant before the location settles. */}
+                    <TableCell className="text-right tabular-nums text-foreground/70">{less(totals.processingCents)}</TableCell>
                     <TableCell className="text-right tabular-nums text-foreground/70">
-                      {less(totals.saasCents + totals.processingCents)}
+                      {less(totals.franchiseFeeCents)}
                     </TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground/70">{less(totals.saasCents)}</TableCell>
                     <TableCell className="text-right tabular-nums text-foreground/70">{less(totals.hardwareCents)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground/70">{less(totals.royaltyCents)}</TableCell>
                     <TableCell
                       className={cn(
                         "text-right font-semibold tabular-nums",
