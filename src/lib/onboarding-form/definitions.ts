@@ -128,30 +128,6 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     },
   },
   {
-    name: "acceptedPaymentsBefore",
-    type: "select",
-    label: "Has your business accepted payments before?",
-    placeholder: "Select whether your business accepted payments before?",
-    required: true,
-    audience: "platform",
-    sectionHeader: "Historical Payment Information",
-    options: YES_NO,
-  },
-  {
-    name: "currentRunway",
-    type: "select",
-    label: "How many months can your business operate with its current cash balance?",
-    placeholder: "Select your current runway",
-    required: true,
-    audience: "platform",
-    options: [
-      { label: "< 6 months", value: "< 6 months" },
-      { label: "6 - 12 months", value: "6 - 12 months" },
-      { label: "13 - 18 months", value: "13 - 18 months" },
-      { label: ">18 months/profitable", value: ">18 months/profitable" },
-    ],
-  },
-  {
     name: "payinsMonthlyVolume",
     type: "money-amount",
     label: "Estimated monthly pay-in volume across all pay-in products",
@@ -187,6 +163,8 @@ export const HIDDEN_FIELD_NAMES = [
   // never rendered as a UI control for the merchant to toggle.
   "payinMethods",
   "payoutMethods",
+  "acceptedPaymentsBefore",
+  "currentRunway",
   ...Object.keys(FIXED_FIELDS),
   ...WEBSITE_URL_COPIES,
 ] as const;
