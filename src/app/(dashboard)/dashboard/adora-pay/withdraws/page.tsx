@@ -9,12 +9,14 @@ import {
   type WithdrawalsSource,
 } from "@/features/dashboard/load-withdrawals";
 import { DEFAULT_TIME_ZONE } from "@/features/dashboard/load-payments-series";
+import { PAYMENTS_PATH, redirectUnlessAdoraPayReady } from "@/features/dashboard/pay-gate";
 import { getSessionSubmerchant } from "@/features/dashboard/session-submerchant";
 import { parseWithdrawRange, type WithdrawRange } from "@/features/dashboard/withdraw-range";
 
 export const metadata: Metadata = { title: "Withdraws" };
 
 export default async function WithdrawsPage({ searchParams }: PageProps<"/dashboard/adora-pay/withdraws">) {
+  await redirectUnlessAdoraPayReady();
   const params = await searchParams;
   const search = typeof params.search === "string" ? params.search.trim() : "";
 
@@ -51,7 +53,7 @@ export default async function WithdrawsPage({ searchParams }: PageProps<"/dashbo
   const session = await getSessionSubmerchant();
   if (!session) redirect("/login");
   const { login, submerchantId } = session;
-  if (!submerchantId) redirect("/dashboard/adora-pay");
+  if (!submerchantId) redirect(PAYMENTS_PATH);
 
   const timeZone = await shopTimeZone(login.id);
   const range = parseWithdrawRange({ from: params.from, to: params.to, timeZone, now: new Date() });

@@ -128,14 +128,6 @@ function NavLinks({ onNavigate, franchise }: { onNavigate?: () => void; franchis
         accent
       />
       <NavItem
-        href="/dashboard/adora-pay/tips"
-        label="Tips"
-        icon={HandCoinsIcon}
-        active={pathname === "/dashboard/adora-pay/tips"}
-        onNavigate={onNavigate}
-        accent
-      />
-      <NavItem
         href="/dashboard/adora-pay/chargebacks"
         label="Chargebacks"
         icon={ShieldAlertIcon}
@@ -154,7 +146,6 @@ function NavLinks({ onNavigate, franchise }: { onNavigate?: () => void; franchis
           accent
         />
       )}
-      <SectionLabel>Withdrawals</SectionLabel>
       <NavItem
         href="/dashboard/adora-pay/withdraws"
         label="Withdraws"
@@ -165,7 +156,7 @@ function NavLinks({ onNavigate, franchise }: { onNavigate?: () => void; franchis
       />
       <NavItem
         href="/dashboard/adora-pay/withdrawers"
-        label="Staff"
+        label="Tips Payout"
         icon={UsersRoundIcon}
         active={pathname === "/dashboard/adora-pay/withdrawers"}
         onNavigate={onNavigate}

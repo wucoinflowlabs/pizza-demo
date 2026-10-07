@@ -156,7 +156,7 @@ export function AdoraPaySignup({
         <FeatureCarousel />
       )}
       {stage === "page" && !backdrop && (
-        <div className="absolute top-1/2 right-6 z-10 -translate-y-1/2 sm:right-10">
+        <div className="absolute top-1/2 right-4 z-10 -translate-y-1/2 sm:right-8 lg:right-auto lg:left-[72%]">
           <Button
             type="button"
             className="h-14 gap-2.5 rounded-full bg-white px-7 text-base font-semibold text-shop-ink shadow-[0_18px_40px_-16px_rgba(0,0,0,0.55)] transition duration-200 hover:scale-105 hover:bg-white hover:shadow-[0_24px_48px_-14px_rgba(0,0,0,0.6)] active:scale-[0.98] sm:h-20 sm:gap-3 sm:px-10 sm:text-xl"
@@ -277,8 +277,8 @@ export function AdoraPaySignup({
                 />
               )}
               {stage === "pending" && <UnderReviewScreen />}
-              {stage === "approved" && (
-                <ApprovedScreen businessName={businessName} />
+              {stage === "approved" && progress && (
+                <ApprovedScreen businessName={businessName} merchantId={progress.merchantId} />
               )}
             </div>
           </div>

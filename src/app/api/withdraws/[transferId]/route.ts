@@ -1,13 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getSessionSubmerchant } from "@/features/dashboard/session-submerchant";
+import { resolvePaymentSubmerchant } from "@/features/dashboard/session-submerchant";
 import { ENHANCED_SPEEDS, toWithdrawDetail } from "@/features/dashboard/withdrawals";
 import { PaymentsError } from "@/lib/payments/errors";
 import { getWithdraw, getWithdrawEnhancedInfo } from "@/lib/payments/withdraws";
 
-export async function GET(_request: NextRequest, ctx: RouteContext<"/api/withdraws/[transferId]">) {
-  const session = await getSessionSubmerchant();
-  if (!session?.submerchantId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  const { submerchantId } = session;
+export async function GET(request: NextRequest, ctx: RouteContext<"/api/withdraws/[transferId]">) {
+  const submerchantId = await resolvePaymentSubmerchant(request.nextUrl.searchParams.get("location"));
+  if (!submerchantId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
   const { transferId } = await ctx.params;
   try {

@@ -62,23 +62,9 @@ function clearHold(merchantId: string) {
   }
 }
 
-function kybDoneKey(merchantId: string) {
-  return `za-kyb-done:${merchantId}`;
-}
-
-/** True after this browser finished Persona. Sandbox `approved` is not this. */
-function storedKybDone(merchantId: string): boolean {
-  try {
-    return sessionStorage.getItem(kybDoneKey(merchantId)) === "1";
-  } catch {
-    return false;
-  }
-}
-
 // Details first, then Persona business and owner verification, then submit.
-// Coinflow sandbox sets verification.status to approved before anyone opens
-// Persona, so that status cannot mark this step done.
-function buildSteps(progress: SubmerchantProgress, kybDone: boolean): Step[] {
+function buildSteps(progress: SubmerchantProgress): Step[] {
+  const verified = progress.verificationStatus === "approved";
   return [
     {
       id: "details",
@@ -89,7 +75,7 @@ function buildSteps(progress: SubmerchantProgress, kybDone: boolean): Step[] {
     {
       id: "business",
       title: "Business verification",
-      complete: kybDone || progress.applicationSubmitted,
+      complete: verified || progress.applicationSubmitted,
       hidden: false,
     },
     {
@@ -119,8 +105,7 @@ export function ApplicationJourney({
   const [progress, setProgress] = useState(initialProgress);
   const [stepId, setStepId] = useState<StepId>(() => initialStep(initialProgress));
   const [releaseApprovalAt, setReleaseApprovalAt] = useState<number>();
-  const [kybDone, setKybDone] = useState(false);
-  const steps = useMemo(() => buildSteps(progress, kybDone), [progress, kybDone]);
+  const steps = useMemo(() => buildSteps(progress), [progress]);
   const visibleSteps = steps.filter((step) => !step.hidden);
   const approvalHeld = releaseApprovalAt !== undefined && releaseApprovalAt > Date.now();
 
@@ -133,7 +118,6 @@ export function ApplicationJourney({
   useLayoutEffect(() => {
     const until = storedHold(progress.merchantId);
     if (until) setReleaseApprovalAt(until);
-    if (storedKybDone(progress.merchantId)) setKybDone(true);
   }, [progress.merchantId]);
 
   useEffect(() => {
@@ -158,7 +142,6 @@ export function ApplicationJourney({
         progress={progress}
         refresh={refreshProgress}
         onProgress={setProgress}
-        onKybFinished={() => setKybDone(true)}
         onComplete={() => goTo("submit")}
       />
     ),
@@ -175,7 +158,7 @@ export function ApplicationJourney({
     ),
     submit:
       progress.applicationSubmitted && isApproved(progress) && !approvalHeld ? (
-        <ApprovedScreen businessName={businessName} />
+        <ApprovedScreen businessName={businessName} merchantId={progress.merchantId} />
       ) : progress.applicationSubmitted || approvalHeld ? (
         <UnderReviewScreen />
       ) : (

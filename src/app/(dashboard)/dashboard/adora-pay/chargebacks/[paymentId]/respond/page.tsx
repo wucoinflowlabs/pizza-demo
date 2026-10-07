@@ -7,6 +7,7 @@ import { toChargeback, type Chargeback } from "@/features/dashboard/chargebacks"
 import { DisputeResponse } from "@/features/dashboard/components/dispute-response";
 import { getSessionFranchise, parseLocation } from "@/features/dashboard/franchise";
 import { DEFAULT_TIME_ZONE, shopTimeZone } from "@/features/dashboard/load-payments-series";
+import { PAYMENTS_PATH, redirectUnlessAdoraPayReady } from "@/features/dashboard/pay-gate";
 import { getSessionSubmerchant } from "@/features/dashboard/session-submerchant";
 import { getChargeback, getChargebackDraft } from "@/lib/payments/chargebacks";
 import { PaymentsError } from "@/lib/payments/errors";
@@ -29,7 +30,7 @@ async function resolveStore(locationParam: unknown) {
 
   const session = await getSessionSubmerchant();
   if (!session) redirect("/operator");
-  if (!session.submerchantId) redirect("/dashboard/adora-pay");
+  if (!session.submerchantId) redirect(PAYMENTS_PATH);
   return { submerchantId: session.submerchantId, timeZone: await shopTimeZone(session.login.id) };
 }
 
@@ -84,6 +85,7 @@ export default async function RespondToChargebackPage({
   params,
   searchParams,
 }: PageProps<"/dashboard/adora-pay/chargebacks/[paymentId]/respond">) {
+  await redirectUnlessAdoraPayReady();
   const { paymentId } = await params;
   const query = await searchParams;
   const store = await resolveStore(query.location);

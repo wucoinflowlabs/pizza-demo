@@ -181,11 +181,14 @@ function without<T>(record: Record<string, T>, key: string) {
 export function WithdrawDrawer({
   transferId,
   timeZone,
+  locationId,
   container,
   onClose,
 }: {
   transferId: string | null;
   timeZone: string;
+  /** Franchise owners pass the picked store id so the fetch targets that sub-merchant. */
+  locationId?: string;
   container: RefObject<HTMLElement | null>;
   onClose: () => void;
 }) {
@@ -201,7 +204,8 @@ export function WithdrawDrawer({
     const controller = new AbortController();
     (async () => {
       try {
-        const response = await fetch(`/api/withdraws/${encodeURIComponent(transferId)}`, { signal: controller.signal });
+        const query = locationId ? `?${new URLSearchParams({ location: locationId }).toString()}` : "";
+        const response = await fetch(`/api/withdraws/${encodeURIComponent(transferId)}${query}`, { signal: controller.signal });
         const body = await response.json();
         if (response.ok) setDetails((current) => ({ ...current, [transferId]: body as WithdrawDetail }));
         else setErrors((current) => ({ ...current, [transferId]: body.error ?? "This withdrawal couldn't be loaded." }));
@@ -212,7 +216,7 @@ export function WithdrawDrawer({
       }
     })();
     return () => controller.abort();
-  }, [transferId, needsFetch]);
+  }, [transferId, locationId, needsFetch]);
 
   const createdAt = detail ? new Date(detail.createdAt) : undefined;
 

@@ -4,11 +4,13 @@ import { WithdrawersTable } from "@/features/dashboard/components/withdrawers-ta
 import { enrolledLocations, getSessionFranchise, parseLocation } from "@/features/dashboard/franchise";
 import { loadWithdrawers, shopTimeZone, type WithdrawersResult, type WithdrawalsSource } from "@/features/dashboard/load-withdrawals";
 import { DEFAULT_TIME_ZONE } from "@/features/dashboard/load-payments-series";
+import { PAYMENTS_PATH, redirectUnlessAdoraPayReady } from "@/features/dashboard/pay-gate";
 import { getSessionSubmerchant } from "@/features/dashboard/session-submerchant";
 
 export const metadata: Metadata = { title: "Withdrawers" };
 
 export default async function WithdrawersPage({ searchParams }: PageProps<"/dashboard/adora-pay/withdrawers">) {
+  await redirectUnlessAdoraPayReady();
   const params = await searchParams;
   const search = typeof params.search === "string" ? params.search.trim() : "";
 
@@ -33,7 +35,6 @@ export default async function WithdrawersPage({ searchParams }: PageProps<"/dash
         search={search}
         result={result}
         timeZone={DEFAULT_TIME_ZONE}
-        showMerchant
         locations={locations}
         location={selected?.id}
       />
@@ -43,7 +44,7 @@ export default async function WithdrawersPage({ searchParams }: PageProps<"/dash
   const session = await getSessionSubmerchant();
   if (!session) redirect("/login");
   const { login, submerchantId } = session;
-  if (!submerchantId) redirect("/dashboard/adora-pay");
+  if (!submerchantId) redirect(PAYMENTS_PATH);
 
   const [timeZone, result] = await Promise.all([
     shopTimeZone(login.id),
@@ -56,14 +57,12 @@ function WithdrawersView({
   search,
   result,
   timeZone,
-  showMerchant,
   locations,
   location,
 }: {
   search: string;
   result: WithdrawersResult;
   timeZone: string;
-  showMerchant?: boolean;
   locations?: { id: string; label: string; city: string; enrolled: boolean }[];
   location?: string;
 }) {
@@ -74,7 +73,6 @@ function WithdrawersView({
           search={search}
           timeZone={timeZone}
           withdrawers={result.withdrawers}
-          showMerchant={showMerchant}
           locations={locations}
           location={location}
           failedLocations={result.failedLocations}
@@ -84,7 +82,6 @@ function WithdrawersView({
           search={search}
           timeZone={timeZone}
           error={result.message}
-          showMerchant={showMerchant}
           locations={locations}
           location={location}
         />

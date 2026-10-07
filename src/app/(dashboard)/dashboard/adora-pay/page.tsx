@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AdoraPayActivity } from "@/features/dashboard/components/adora-pay-activity";
-import { AdoraPaySignup } from "@/features/dashboard/components/adora-pay-signup";
 import { PaymentsChart } from "@/features/dashboard/components/payments-chart";
 import { RememberMerchantAccount } from "@/features/dashboard/components/remember-merchant-account";
 import { enrolledLocations, getSessionFranchise } from "@/features/dashboard/franchise";
 import { LAMONICA_EMAIL, LAMONICA_PREFILL } from "@/features/dashboard/lamonica";
 import { loadPaymentsSeries } from "@/features/dashboard/load-payments-series";
+import { PAYMENTS_PATH } from "@/features/dashboard/pay-gate";
 import { eventsFromSnapshot, isAdoraPayEnrolled, snapshotFromProgress } from "@/features/dashboard/pay-status";
-import { merchantSignupPrefill } from "@/features/dashboard/signup-prefill";
-import { getMerchantLogin } from "@/lib/merchant-logins";
-import { sanitizeFormValues } from "@/lib/onboarding-form";
-import { getOnboardingForm } from "@/lib/payments/onboarding";
-import { findSubmerchantIdByEmail } from "@/lib/payments/submerchants";
+import { getSessionSubmerchant } from "@/features/dashboard/session-submerchant";
 import { getSubmerchantProgress } from "@/lib/payments/verification";
-import { getCurrentAccountId, getCurrentMerchantEmail } from "@/lib/session";
+import { getCurrentAccountId } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Adora Pay" };
 
@@ -33,53 +29,31 @@ export default async function AdoraPayPage({ searchParams }: PageProps<"/dashboa
     );
   }
 
-  const email = await getCurrentMerchantEmail();
-  if (!email) redirect("/operator");
-  const login = await getMerchantLogin(email);
-  if (!login) redirect("/operator");
+  const session = await getSessionSubmerchant();
+  if (!session) redirect("/operator");
+  const { login, submerchantId } = session;
   const openApplication = (await searchParams).enroll === "1";
-
-  const submerchantId =
-    (await findSubmerchantIdByEmail(login.email)) ?? login.cfSubmerchantId ?? undefined;
   if (!submerchantId) {
-    return (
-      <AdoraPaySignup
-        prefill={merchantSignupPrefill(login.email)}
-        openApplication={openApplication}
-      />
-    );
+    redirect(openApplication ? `${PAYMENTS_PATH}?enroll=1` : PAYMENTS_PATH);
   }
 
-  const [progress, form, currentAccountId, payments] = await Promise.all([
-    getSubmerchantProgress(submerchantId),
-    getOnboardingForm(submerchantId),
+  const progress = await getSubmerchantProgress(submerchantId);
+  // Enrollment lives on the payments page until Coinflow has accepted the application.
+  if (!isAdoraPayEnrolled(progress)) {
+    redirect(openApplication ? `${PAYMENTS_PATH}?enroll=1` : PAYMENTS_PATH);
+  }
+
+  const [currentAccountId, payments] = await Promise.all([
     getCurrentAccountId(),
     loadPaymentsSeries({ submerchantIds: [submerchantId], loginId: login.id }),
   ]);
+
   const bindAccount = currentAccountId === submerchantId ? null : <RememberMerchantAccount />;
   const paymentsChart = payments.ok ? (
     <PaymentsChart series={payments.series} />
   ) : (
     <PaymentsChart error={payments.message} />
   );
-
-  // Stay on the application until Coinflow has recorded the submission and
-  // unblocked the account. A submitted onboarding form is not enrollment.
-  const settled = isAdoraPayEnrolled(progress);
-
-  if (!settled) {
-    return (
-      <>
-        {bindAccount}
-        <AdoraPaySignup
-          prefill={{ ...merchantSignupPrefill(login.email), ...sanitizeFormValues(form) }}
-          initialProgress={progress}
-          backdrop={paymentsChart}
-          openApplication={openApplication}
-        />
-      </>
-    );
-  }
 
   const snapshot = snapshotFromProgress(
     progress,

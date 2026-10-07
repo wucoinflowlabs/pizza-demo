@@ -33,6 +33,9 @@ const PAYMENT_METHODS = [
 
 type Fulfillment = "pickup" | "delivery";
 
+const TIP_PERCENTS = [10, 15, 20] as const;
+type TipPercent = (typeof TIP_PERCENTS)[number];
+
 type Customer = {
   firstName: string;
   lastName: string;
@@ -77,8 +80,16 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
   const [paid, setPaid] = useState<PaidOrder>();
   const [frameHeight, setFrameHeight] = useState(680);
   const [tipDollars, setTipDollars] = useState("");
-  const tipCents = parseTipCents(tipDollars);
+  const [tipPercent, setTipPercent] = useState<TipPercent>();
+  // Once the user clicks Continue to payment we freeze the tip so the amount
+  // the Coinflow widget charges can't drift from what the summary shows.
+  const [lockedTipCents, setLockedTipCents] = useState<number>();
+  const percentTipCents =
+    tipPercent === undefined ? undefined : Math.round((cart.totals.subtotalCents * tipPercent) / 100);
+  const liveTipCents = percentTipCents ?? parseTipCents(tipDollars);
+  const tipCents = lockedTipCents ?? liveTipCents;
   const totalWithTipCents = cart.totals.totalCents + tipCents;
+  const tipLocked = lockedTipCents !== undefined;
 
   const handleHeight = useCallback((next: string) => {
     const height = Number(next);
@@ -95,13 +106,14 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
     setOrderId((current) => current ?? `LM${Date.now().toString(36).toUpperCase()}`);
     setDeclined(undefined);
     setKeyError(undefined);
+    setLockedTipCents(liveTipCents);
     setStep("pay");
     setCheckout(undefined);
 
     setStarting(true);
     const [keyResult, tokenResult] = await Promise.all([
       sessionKey ? { sessionKey } : createLamonicaSessionKey(id),
-      createLamonicaCheckoutToken({ lines: cart.lines.map(({ id, qty }) => ({ id, qty })) }),
+      createLamonicaCheckoutToken({ lines: cart.lines.map(({ id, qty }) => ({ id, qty })), tipCents: liveTipCents }),
     ]);
     setStarting(false);
     if ("error" in keyResult) return setKeyError(keyResult.error);
@@ -148,8 +160,8 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
 
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[320px_1fr] lg:items-start lg:py-12">
-      <aside className="rounded-3xl bg-white p-5 ring-1 ring-[#181848]/10 lg:sticky lg:top-28">
-        <h1 className="font-heading text-xl font-bold">Your order</h1>
+      <aside className="rounded-3xl bg-white p-5 shadow-[0_22px_50px_-18px_rgba(24,24,72,0.55)] ring-2 ring-[#181848]/20 lg:sticky lg:top-28">
+        <h1 className="font-heading text-2xl font-bold">Your order</h1>
         {!cart.ready ? (
           <p className="mt-3 text-sm text-[#181848]/70">Loading your order…</p>
         ) : (
@@ -167,22 +179,60 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
             <dl className="mt-4 space-y-1 border-t border-[#181848]/10 pt-4 text-sm">
               <Row label="Subtotal" value={money(cart.totals.subtotalCents)} />
               <Row label="Tax" value={money(cart.totals.taxCents)} />
-              <div className="flex items-center justify-between gap-2">
-                <label htmlFor="tip" className="text-[#181848]/80">
+              <div className="my-3 rounded-2xl bg-[#FFF6E2] p-3 ring-1 ring-[#F0A020]">
+                <label htmlFor="tip" className="text-sm font-bold">
                   Tip for the staff
                 </label>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#181848]/5 px-2 py-0.5 text-sm ring-1 ring-[#181848]/10">
-                  <span className="text-[#181848]/60">$</span>
+                <span
+                  className={`mt-2 flex h-12 w-full items-center gap-1 rounded-xl border-2 border-[#181848] bg-white px-3 shadow-sm focus-within:border-[#F0A020] focus-within:ring-2 focus-within:ring-[#F0A020]/50 ${
+                    tipLocked ? "opacity-70" : ""
+                  }`}
+                >
+                  <span className="text-lg font-bold text-[#181848]/45">$</span>
                   <input
                     id="tip"
                     inputMode="decimal"
-                    placeholder="0"
-                    value={tipDollars}
-                    onChange={(event) => setTipDollars(event.target.value)}
-                    className="w-14 bg-transparent text-right text-sm tabular-nums outline-none placeholder:text-[#181848]/40"
+                    placeholder="0.00"
+                    value={
+                      tipLocked
+                        ? (tipCents / 100).toFixed(2)
+                        : tipPercent !== undefined
+                          ? (tipCents / 100).toFixed(2)
+                          : tipDollars
+                    }
+                    disabled={tipLocked}
+                    onChange={(event) => {
+                      setTipPercent(undefined);
+                      setTipDollars(event.target.value);
+                    }}
+                    className="w-full bg-transparent text-right text-lg font-bold tabular-nums outline-none placeholder:font-semibold placeholder:text-[#181848]/30 disabled:cursor-not-allowed"
                     aria-label="Tip amount in dollars"
                   />
                 </span>
+                <div className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label="Tip percentage">
+                  {TIP_PERCENTS.map((percent) => {
+                    const selected = tipPercent === percent;
+                    return (
+                      <button
+                        key={percent}
+                        type="button"
+                        disabled={tipLocked}
+                        aria-pressed={selected}
+                        onClick={() => {
+                          setTipDollars("");
+                          setTipPercent((current) => (current === percent ? undefined : percent));
+                        }}
+                        className={`h-10 rounded-full text-sm font-bold tabular-nums disabled:cursor-not-allowed ${
+                          selected
+                            ? "bg-[#181848] text-[#FFF6E2] shadow-sm"
+                            : "bg-white text-[#181848] ring-1 ring-[#181848]/15 hover:ring-[#181848]/40"
+                        }`}
+                      >
+                        {percent}%
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="flex justify-between pt-1 font-heading text-base font-bold">
                 <dt>Total</dt>
@@ -295,7 +345,10 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
             </div>
             <button
               type="button"
-              onClick={() => setStep("details")}
+              onClick={() => {
+                setLockedTipCents(undefined);
+                setStep("details");
+              }}
               className="text-sm font-semibold underline"
             >
               Edit details
@@ -319,6 +372,7 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
               style={{ height: frameHeight }}
             >
               <CoinflowPurchase
+                key={`cf-${totalWithTipCents}`}
                 sessionKey={sessionKey}
                 jwtToken={checkout.jwtToken}
                 merchantId={LAMONICA_MERCHANT_ID}

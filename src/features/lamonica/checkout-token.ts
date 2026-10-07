@@ -12,6 +12,7 @@ const MAX_TOTAL_CENTS = 100_000;
 
 const Input = z.object({
   lines: z.array(z.object({ id: z.string().min(1).max(64), qty: z.number().int().min(1).max(50) })).min(1).max(50),
+  tipCents: z.number().int().min(0).max(100_000).optional(),
 });
 
 /**
@@ -25,7 +26,9 @@ export async function createLamonicaCheckoutToken(
   const parsed = Input.safeParse(input);
   if (!parsed.success) return { error: "We couldn't start checkout. Please try again." };
 
-  const { totalCents } = orderTotals(parsed.data.lines);
+  const { totalCents: linesTotal } = orderTotals(parsed.data.lines);
+  const tipCents = parsed.data.tipCents ?? 0;
+  const totalCents = linesTotal + tipCents;
   if (totalCents < 50 || totalCents > MAX_TOTAL_CENTS) {
     return { error: "We couldn't start checkout. Please try again." };
   }
@@ -36,7 +39,7 @@ export async function createLamonicaCheckoutToken(
     const jwtToken = await createCheckoutJwt(LAMONICA_MERCHANT_ID, {
       subtotal: { cents: totalCents, currency: "USD" },
       feePercentage: marketplaceFeePercent(schedule),
-      webhookInfo: { fees },
+      webhookInfo: { fees, tipCents },
     });
     return { jwtToken, fees };
   } catch (err) {

@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { AdoraPaySignup } from "@/features/dashboard/components/adora-pay-signup";
 import { OrdersTable } from "@/features/dashboard/components/orders-table";
+import { RememberMerchantAccount } from "@/features/dashboard/components/remember-merchant-account";
 import { enrolledLocations, getSessionFranchise, parseLocation } from "@/features/dashboard/franchise";
 import { loadOrders, type OrdersResult } from "@/features/dashboard/load-orders";
 import { parseOrderWindow, type OrderWindow } from "@/features/dashboard/orders";
+import { isAdoraPayEnrolled } from "@/features/dashboard/pay-status";
 import { getSessionSubmerchant } from "@/features/dashboard/session-submerchant";
+import { merchantSignupPrefill } from "@/features/dashboard/signup-prefill";
+import { sanitizeFormValues } from "@/lib/onboarding-form";
+import { getOnboardingForm } from "@/lib/payments/onboarding";
+import { getSubmerchantProgress } from "@/lib/payments/verification";
+import { getCurrentAccountId } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -33,9 +41,31 @@ export default async function PaymentsPage({ searchParams }: PageProps<"/dashboa
 
   const session = await getSessionSubmerchant();
   if (!session) redirect("/operator");
-  // Payments only exist once the shop has an Adora Pay account.
   const { login, submerchantId } = session;
-  if (!submerchantId) redirect("/dashboard/adora-pay");
+  const openApplication = params.enroll === "1";
+
+  // Until the shop is enrolled, this page is the enroll carousel. Other pages send people here.
+  if (!submerchantId) {
+    return <AdoraPaySignup prefill={merchantSignupPrefill(login.email)} openApplication={openApplication} />;
+  }
+
+  const [progress, currentAccountId] = await Promise.all([
+    getSubmerchantProgress(submerchantId),
+    getCurrentAccountId(),
+  ]);
+  if (!isAdoraPayEnrolled(progress)) {
+    const form = await getOnboardingForm(submerchantId);
+    return (
+      <>
+        {currentAccountId === submerchantId ? null : <RememberMerchantAccount />}
+        <AdoraPaySignup
+          prefill={{ ...merchantSignupPrefill(login.email), ...sanitizeFormValues(form) }}
+          initialProgress={progress}
+          openApplication={openApplication}
+        />
+      </>
+    );
+  }
 
   const result = await loadOrders({ sources: [{ submerchantId }], loginId: login.id, window });
   return <PaymentsView window={window} result={result} />;

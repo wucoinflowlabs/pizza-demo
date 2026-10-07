@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { enrolledLocations, getSessionFranchise, parseLocation } from "@/features/dashboard/franchise";
+import { redirectUnlessAdoraPayReady } from "@/features/dashboard/pay-gate";
 import { dayIn } from "@/features/dashboard/withdraw-range";
 import { StatementsTable } from "@/features/statements/components/statements-table";
 import { feeScheduleFor } from "@/features/statements/fee-schedule";
@@ -12,6 +13,7 @@ const DAYS = 14;
 
 /** Daily statements are a franchise owner's view: one store, or every store rolled up. */
 export default async function StatementsPage({ searchParams }: PageProps<"/dashboard/adora-pay/statements">) {
+  await redirectUnlessAdoraPayReady();
   const franchise = await getSessionFranchise();
   if (!franchise) redirect("/dashboard/adora-pay");
 
