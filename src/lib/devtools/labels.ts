@@ -12,6 +12,8 @@ const CALL_LABELS: { method: string; pattern: RegExp; label: string }[] = [
   { method: "GET", pattern: /^\/merchant\/payments\/[^/?]+$/, label: "Get payment" },
   { method: "GET", pattern: /^\/merchant\/payments\/[^/?]+\/refund-quote(\?|$)/, label: "Quote refund" },
   { method: "PUT", pattern: /^\/merchant\/payments\/[^/?]+\/refund$/, label: "Refund payment" },
+  { method: "POST", pattern: /^\/checkout\/incremental-auth$/, label: "Increment authorization (tip)" },
+  { method: "POST", pattern: /^\/checkout\/capture$/, label: "Capture payment" },
   { method: "GET", pattern: /^\/merchant\/chargebacks(\?|$)/, label: "List chargebacks" },
   { method: "POST", pattern: /^\/merchant\/chargebacks\/[^/?]+\/accept$/, label: "Accept chargeback" },
   { method: "GET", pattern: /^\/merchant\/chargebacks\/[^/?]+$/, label: "Get chargeback" },

@@ -10,10 +10,13 @@ const Inquiry = dynamic(() => import("persona-react"), { ssr: false });
 export function PersonaInquiry({
   inquiryId,
   sessionToken,
+  fields,
   onComplete,
 }: {
   inquiryId: string;
   sessionToken?: string;
+  /** Prefill values keyed by the inquiry template's field keys. */
+  fields?: Record<string, string>;
   onComplete: () => void;
 }) {
   const [ready, setReady] = useState(false);
@@ -24,6 +27,7 @@ export function PersonaInquiry({
       <Inquiry
         inquiryId={inquiryId}
         sessionToken={sessionToken}
+        fields={fields}
         frameHeight="650px"
         frameWidth="100%"
         onReady={() => setReady(true)}

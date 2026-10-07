@@ -75,3 +75,29 @@ export function refundPayment(
     asSubmerchant: submerchantId,
   });
 }
+
+type Amount = { cents: number; currency: string };
+
+/**
+ * Sandbox only: adds `amount` to an authorized, uncaptured card payment. The
+ * amount is what to add, not the new total. Coinflow serializes calls per
+ * payment, so don't overlap this with another increment, capture or void.
+ */
+export function incrementAuthorization(submerchantId: string, paymentId: string, amount: Amount) {
+  return paymentsRequest<{ totals?: { subtotal?: { cents?: number; currency?: string } } }>({
+    method: "POST",
+    path: "/checkout/incremental-auth",
+    body: { paymentId, incrementalAmount: amount },
+    asSubmerchant: submerchantId,
+  });
+}
+
+/** Captures an authorized payment for `subtotal`. */
+export function capturePayment(submerchantId: string, paymentId: string, subtotal: Amount) {
+  return paymentsRequest<{ jobId?: number }>({
+    method: "POST",
+    path: "/checkout/capture",
+    body: { paymentId, subtotal },
+    asSubmerchant: submerchantId,
+  });
+}

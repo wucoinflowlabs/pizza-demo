@@ -87,3 +87,37 @@ export async function recordCheckoutPayment({
 
   return { ok: true };
 }
+
+/**
+ * Adds a tip adjusted after checkout to the ledger row for `cfPaymentId`.
+ * Only Lamonica checkouts write ledger rows, so a missing row is skipped.
+ */
+export async function addTipToCheckoutPayment({
+  cfPaymentId,
+  tipCents,
+}: {
+  cfPaymentId: string;
+  tipCents: number;
+}): Promise<void> {
+  if (tipCents <= 0) return;
+  const supabase = getSupabaseAdmin();
+  const { data: payment, error: readErr } = await supabase
+    .from("payments")
+    .select("id,tip_cents,amount_cents")
+    .eq("cf_payment_id", cfPaymentId)
+    .maybeSingle();
+  if (readErr) {
+    console.error("[tips] tip adjust lookup failed", readErr);
+    return;
+  }
+  if (!payment) return;
+
+  const { error: updateErr } = await supabase
+    .from("payments")
+    .update({
+      tip_cents: payment.tip_cents + tipCents,
+      amount_cents: payment.amount_cents + tipCents,
+    })
+    .eq("id", payment.id);
+  if (updateErr) console.error("[tips] tip adjust update failed", updateErr);
+}

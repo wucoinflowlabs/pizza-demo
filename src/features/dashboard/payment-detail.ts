@@ -21,6 +21,8 @@ export type PaymentDetail = {
   refundable: boolean;
   /** Settled card payments, which a sandbox chargeback can be opened on. */
   chargebackable: boolean;
+  /** Authorized, uncaptured card payments, which can take a tip before capture. */
+  tipAdjustable: boolean;
   method: OrderMethod;
   card?: {
     bin?: string;
@@ -97,6 +99,7 @@ const PROTECTION_COPY: [RegExp, string][] = [
 ];
 
 const REFUNDABLE_STATUSES = new Set(["SETTLED", "DEPOSITED"]);
+const AUTHORIZED = /^AUTHORI[SZ]ED$/;
 
 function join(parts: (string | undefined)[], separator = ", ") {
   const kept = parts.map((part) => part?.trim()).filter(Boolean);
@@ -179,6 +182,7 @@ export function toPaymentDetail(payment: CoinflowPaymentDetail): PaymentDetail {
     refundedAt: payment.refundInfo?.refundedAt,
     refundable: !!status && REFUNDABLE_STATUSES.has(status) && refundedCents < subtotalCents,
     chargebackable: order.method.key === "card" && !!status && REFUNDABLE_STATUSES.has(status),
+    tipAdjustable: order.method.key === "card" && !!status && AUTHORIZED.test(status),
     method: order.method,
     card:
       order.method.key === "card"

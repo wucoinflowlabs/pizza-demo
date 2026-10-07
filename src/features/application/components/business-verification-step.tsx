@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { SubmerchantProgress } from "@/lib/payments/verification";
 import { markKybCompletedAction } from "@/features/dashboard/kyb-complete-action";
+import { withPersonaFields } from "../persona-prefill";
 import { OwnerVerificationStep } from "./owner-verification-step";
 import { PersonaInquiry } from "./persona-inquiry";
 import { StepHeader } from "./step-header";
@@ -26,11 +27,14 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function BusinessVerificationStep({
   progress,
+  prefill,
   refresh,
   onProgress,
   onComplete,
 }: {
   progress: SubmerchantProgress;
+  /** Answers from step 1, keyed by Persona template field key. */
+  prefill?: Record<string, string>;
   refresh: () => Promise<RefreshResult>;
   onProgress: (progress: SubmerchantProgress) => void;
   onComplete: () => void;
@@ -162,6 +166,7 @@ export function BusinessVerificationStep({
                       key={inquiry.inquiryId}
                       inquiryId={inquiry.inquiryId}
                       sessionToken={inquiry.sessionToken}
+                      fields={prefill}
                       onComplete={() => {
                         rememberFinished();
                         void waitForVerificationChange();
@@ -170,7 +175,7 @@ export function BusinessVerificationStep({
                   ) : (
                     <iframe
                       title="Business verification"
-                      src={inquiry?.link}
+                      src={inquiry?.link && withPersonaFields(inquiry.link, prefill ?? {})}
                       className="h-[650px] w-full rounded-xl border"
                       allow="camera; microphone; fullscreen; clipboard-write"
                     />

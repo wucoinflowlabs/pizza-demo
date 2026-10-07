@@ -7,6 +7,7 @@ import { ASSUME_APPROVED_ON_SUBMIT } from "@/config/onboarding";
 import type { FormValues } from "@/lib/onboarding-form";
 import type { SubmerchantProgress } from "@/lib/payments/verification";
 import { refreshProgress } from "../actions";
+import { personaPrefill } from "../persona-prefill";
 import { ApprovedScreen } from "./approved-screen";
 import { BusinessVerificationStep } from "./business-verification-step";
 import { DetailsStep } from "./details-step";
@@ -103,6 +104,8 @@ export function ApplicationJourney({
   initialValues: FormValues;
 }) {
   const [progress, setProgress] = useState(initialProgress);
+  // Latest submitted answers, so Persona prefill reflects edits made without a reload.
+  const [values, setValues] = useState(initialValues);
   const [stepId, setStepId] = useState<StepId>(() => initialStep(initialProgress));
   const [releaseApprovalAt, setReleaseApprovalAt] = useState<number>();
   const steps = useMemo(() => buildSteps(progress), [progress]);
@@ -134,12 +137,13 @@ export function ApplicationJourney({
     window.scrollTo({ top: 0 });
   };
 
-  const businessName = typeof initialValues.dba === "string" ? initialValues.dba : undefined;
+  const businessName = typeof values.dba === "string" ? values.dba : undefined;
 
   const content: Record<StepId, React.ReactNode> = {
     business: (
       <BusinessVerificationStep
         progress={progress}
+        prefill={personaPrefill(values)}
         refresh={refreshProgress}
         onProgress={setProgress}
         onComplete={() => goTo("submit")}
@@ -147,11 +151,12 @@ export function ApplicationJourney({
     ),
     details: (
       <DetailsStep
-        initialValues={initialValues}
+        initialValues={values}
         alreadySubmitted={progress.onboardingFormSubmitted}
         locked={progress.applicationSubmitted}
-        onSubmitted={(next) => {
+        onSubmitted={(next, submitted) => {
           setProgress(next);
+          setValues(submitted);
           goTo("business");
         }}
       />

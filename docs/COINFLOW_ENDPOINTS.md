@@ -31,6 +31,8 @@ Every Coinflow API call the app makes to onboard a merchant, in the order it hap
 | 19 | `GET` | `/merchant/withdraws/{transferId}` | ✓ | Load one withdrawal for the Withdraws drawer |
 | 20 | `GET` | `/merchant/withdraws/{transferId}/enhanced` | ✓ | Recipient phone/email/card for Venmo, PayPal and card withdrawals |
 | 21 | `POST` | `/checkout/jwt-token` | ✓ | Sign a checkout's amount and Adora's marketplace fee (`feePercentage`) |
+| 22 | `POST` | `/checkout/incremental-auth` | ✓ | Add a tip to an authorized, uncaptured card payment (sandbox only) |
+| 23 | `POST` | `/checkout/capture` | ✓ | Capture an authorized payment after a tip adjust |
 
 ## Main flow: operator invite, then `/apply`
 
@@ -70,6 +72,7 @@ Code: `src/features/dashboard/load-orders.ts`, `src/features/dashboard/payment-d
 - **`GET /merchant/payments/{paymentId}`** (*as sub-merchant*) runs when a row is clicked, through the app's `GET /api/payments/{paymentId}`, which resolves the sub-merchant from the session. Chosen over `/merchant/payments/enhanced/{paymentId}` because it returns the payment itself (amount, fees, status, card brand/last4, statement descriptor, chargeback protection decision, refunds) **and** embeds `enhancedTxInfo` (cardholder and billing address, BIN/issuer, IP location, device, 3DS, AVS/CVV, decline explanation). The response is reduced to the fields the drawer shows before it reaches the browser.
 - **`GET /merchant/payments/{paymentId}/refund-quote`** (*as sub-merchant*) fills the refund dialog's fee preview, via `GET /api/payments/{paymentId}/refund-quote`. `partialAmount` is in cents; omitted for a full refund.
 - **`PUT /merchant/payments/{paymentId}/refund`** (*as sub-merchant*) sends the refund from a server action with `{ refundReason, partialAmount?: { cents } }`. Only `SETTLED`/`DEPOSITED` payments with an unrefunded balance offer the button.
+- **`POST /checkout/incremental-auth`** then **`POST /checkout/capture`** (*as sub-merchant*) run one after the other from the **Tip Adjust** dialog (`tipAdjustAndCaptureAction`), which only `AUTHORIZED` card payments offer. Incremental auth is sandbox only and takes `{ paymentId, incrementalAmount: { cents, currency } }`, where `cents` is the tip to add, not the new total. It returns the recalculated `totals`. Capture takes `{ paymentId, subtotal: { cents, currency } }` with the new `totals.subtotal`. A tip of 0 skips the increment and captures the authorized amount. Coinflow serializes calls per payment, so the two never overlap. After the capture, the tip is added to the Supabase `payments` row (`tip_cents`, `amount_cents`) when one exists.
 
 ## Withdrawers and Withdraws (`/dashboard/adora-pay/withdrawers`, `/dashboard/adora-pay/withdraws`)
 
