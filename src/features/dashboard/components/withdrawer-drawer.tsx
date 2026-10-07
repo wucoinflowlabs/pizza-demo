@@ -552,6 +552,7 @@ export function WithdrawerDrawer({
   withdrawer,
   timeZone,
   showMerchant = false,
+  locationId,
   container,
   onClose,
   onPrevious,
@@ -560,6 +561,8 @@ export function WithdrawerDrawer({
   withdrawer: WithdrawerRow | null;
   timeZone: string;
   showMerchant?: boolean;
+  /** Franchise owners pass the picked store id so the fetch targets that sub-merchant. */
+  locationId?: string;
   container: RefObject<HTMLElement | null>;
   onClose: () => void;
   onPrevious?: () => void;
@@ -595,7 +598,8 @@ export function WithdrawerDrawer({
     const controller = new AbortController();
     (async () => {
       try {
-        const response = await fetch(`/api/withdrawers/${encodeURIComponent(id)}`, { signal: controller.signal });
+        const query = locationId ? `?${new URLSearchParams({ location: locationId }).toString()}` : "";
+        const response = await fetch(`/api/withdrawers/${encodeURIComponent(id)}${query}`, { signal: controller.signal });
         const body = await response.json();
         if (response.ok) setProfiles((current) => ({ ...current, [id]: body as WithdrawerProfile }));
         else setErrors((current) => ({ ...current, [id]: body.error ?? "This withdrawer couldn't be loaded." }));
@@ -606,7 +610,7 @@ export function WithdrawerDrawer({
       }
     })();
     return () => controller.abort();
-  }, [id, needsFetch]);
+  }, [id, locationId, needsFetch]);
 
   const forget = (key: string) => {
     setProfiles((current) => without(current, key));

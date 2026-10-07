@@ -31,7 +31,6 @@ export async function recordLamonicaPaymentAction(
 
   const result = await recordCheckoutPayment({
     shopId: shop.id,
-    submerchantId: LAMONICA_MERCHANT_ID,
     orderTicket: parsed.data.orderId,
     subtotalCents: parsed.data.subtotalCents,
     tipCents: parsed.data.tipCents,

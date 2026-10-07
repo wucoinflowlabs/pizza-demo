@@ -13,7 +13,8 @@ export async function getSessionSubmerchant() {
   if (!email) return undefined;
   const login = await getMerchantLogin(email);
   if (!login) return undefined;
-  const submerchantId = await findSubmerchantIdByEmail(login.email);
+  const submerchantId =
+    (await findSubmerchantIdByEmail(login.email)) ?? login.cfSubmerchantId ?? undefined;
   return { login, submerchantId };
 }
 

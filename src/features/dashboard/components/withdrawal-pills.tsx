@@ -217,3 +217,40 @@ export function compactDate(iso: string | undefined, timeZone: string) {
   );
   return `${parts.month}-${parts.day}-${parts.year} ${parts.hour}:${parts.minute}`;
 }
+
+
+/** Compact pills for the staff table's "Payout methods" column. */
+export function PayoutMethodChips({ methods }: { methods: { kind: string; label: string }[] }) {
+  if (methods.length === 0) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {methods.map((method) => (
+        <PayoutMethodChip key={method.kind + method.label} kind={method.kind} label={method.label} />
+      ))}
+    </span>
+  );
+}
+
+function PayoutMethodChip({ kind, label }: { kind: string; label: string }) {
+  if (kind === "venmo") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 ring-1 ring-sky-600/20 ring-inset">
+        <span className="text-[11px] leading-none font-black text-[#008CFF] italic">V</span>
+        {label}
+      </span>
+    );
+  }
+  if (kind === "paypal") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 ring-1 ring-indigo-600/20 ring-inset">
+        <span className="text-[11px] leading-none font-black text-[#003087] italic">P</span>
+        {label}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground ring-1 ring-foreground/10 ring-inset">
+      {label}
+    </span>
+  );
+}

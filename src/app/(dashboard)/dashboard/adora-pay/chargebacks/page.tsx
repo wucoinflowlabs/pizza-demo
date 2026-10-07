@@ -4,11 +4,13 @@ import { ChargebacksTable } from "@/features/dashboard/components/chargebacks-ta
 import { enrolledLocations, getSessionFranchise, parseLocation } from "@/features/dashboard/franchise";
 import { loadChargebacks, type ChargebacksResult } from "@/features/dashboard/load-chargebacks";
 import { parseOrderWindow, type OrderWindow } from "@/features/dashboard/orders";
+import { PAYMENTS_PATH, redirectUnlessAdoraPayReady } from "@/features/dashboard/pay-gate";
 import { getSessionSubmerchant } from "@/features/dashboard/session-submerchant";
 
 export const metadata: Metadata = { title: "Chargebacks" };
 
 export default async function ChargebacksPage({ searchParams }: PageProps<"/dashboard/adora-pay/chargebacks">) {
+  await redirectUnlessAdoraPayReady();
   const params = await searchParams;
   const window = parseOrderWindow(params.window);
 
@@ -35,7 +37,7 @@ export default async function ChargebacksPage({ searchParams }: PageProps<"/dash
   if (!session) redirect("/operator");
   // Chargebacks only exist once the shop has an Adora Pay account.
   const { login, submerchantId } = session;
-  if (!submerchantId) redirect("/dashboard/adora-pay");
+  if (!submerchantId) redirect(PAYMENTS_PATH);
 
   const result = await loadChargebacks({ sources: [{ submerchantId }], loginId: login.id, window });
   return <ChargebacksView window={window} result={result} />;

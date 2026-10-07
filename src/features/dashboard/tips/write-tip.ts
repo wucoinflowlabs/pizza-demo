@@ -1,15 +1,17 @@
 import "server-only";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { loadTipRecipient } from "./recipient";
 
 /**
- * Persists a settled Coinflow payment into the shop's local ledger so the Tips
- * page can roll it up. Called from the checkout success callback; idempotent on
- * cf_payment_id so a retry (or a webhook delivering later) can't double-count.
+ * Persists a settled Coinflow payment into the shop's local ledger. Called
+ * from the Lamonica checkout success callback; idempotent on cf_payment_id so
+ * a retry (or a webhook delivering later) can't double-count.
+ *
+ * Online checkout tips stay with the business — the order is written with no
+ * `server_id`, so the Tips page (which joins payments → orders → staff) doesn't
+ * attribute them to any staff member and Cash Out ignores them.
  */
 export async function recordCheckoutPayment({
   shopId,
-  submerchantId,
   orderTicket,
   subtotalCents,
   tipCents,
@@ -19,7 +21,6 @@ export async function recordCheckoutPayment({
   settledAt = new Date(),
 }: {
   shopId: string;
-  submerchantId?: string;
   orderTicket: string;
   subtotalCents: number;
   tipCents: number;
@@ -29,13 +30,6 @@ export async function recordCheckoutPayment({
   settledAt?: Date;
 }): Promise<{ ok: true } | { ok: false; reason: string }> {
   const supabase = getSupabaseAdmin();
-  const recipient = await loadTipRecipient({ shopId, submerchantId });
-  if (!recipient) {
-    return {
-      ok: false,
-      reason: `No tip recipient configured for shop ${shopId}; set TIP_RECIPIENT_CF_USER_ID and seed staff.`,
-    };
-  }
 
   // Business date is the shop's local day the sale closed on.
   const { data: shop } = await supabase.from("shops").select("timezone").eq("id", shopId).single();
@@ -60,7 +54,8 @@ export async function recordCheckoutPayment({
         shop_id: shopId,
         ticket_number: orderTicket,
         business_date: businessDate,
-        server_id: recipient.staffId,
+        // Deliberately null — see function comment.
+        server_id: null,
         status: "paid",
         subtotal_cents: subtotalCents,
       },

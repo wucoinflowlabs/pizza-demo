@@ -17,6 +17,9 @@ export type WithdrawerVerificationView = {
 };
 
 /** One withdrawer, flattened to what the Withdrawers table shows. */
+/** Short label for a staff's payout method, built from the Coinflow profile. */
+export type PayoutMethodChip = { kind: "venmo" | "paypal" | "bank" | "card" | "iban" | "pix" | "interac"; label: string };
+
 export type WithdrawerRow = {
   id: string;
   createdAt?: string;
@@ -25,6 +28,8 @@ export type WithdrawerRow = {
   name?: string;
   /** The store the withdrawer belongs to in a franchise view. */
   location?: OrderLocation;
+  /** Linked payout methods from the Coinflow profile. */
+  payoutMethods: PayoutMethodChip[];
   wallet: string;
   /** Registered by user id rather than a blockchain wallet. */
   isUser: boolean;
@@ -53,6 +58,7 @@ export function toWithdrawerRow(withdrawer: CoinflowWithdrawer): WithdrawerRow {
     override: status === "Override",
     blockReason: status === "Blocked" ? withdrawer.availability?.reason : undefined,
     verification: verificationView(withdrawer.verification),
+    payoutMethods: [],
   };
 }
 

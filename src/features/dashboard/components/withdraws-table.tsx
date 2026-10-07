@@ -443,6 +443,7 @@ export function WithdrawsTable({
       <WithdrawDrawer
         transferId={selectedId}
         timeZone={timeZone}
+        locationId={rows.find((row) => row.id === selectedId)?.location?.id ?? location}
         container={portalRef}
         onClose={() => setSelectedId(null)}
       />

@@ -40,12 +40,21 @@ async function resolveScope(locationId?: string): Promise<{ scope?: Scope; error
  * `payouts` row with the sandbox cf_transfer_id so the balance resets to zero.
  * Accepts a franchise owner's picked location so they can cash out any store.
  */
-export async function cashOutTipsAction({ locationId }: { locationId?: string } = {}): Promise<Result> {
+export async function cashOutTipsAction({
+  locationId,
+  staffId,
+}: {
+  locationId?: string;
+  /** When set, cash out this specific staff instead of the env-designated recipient. */
+  staffId?: string;
+} = {}): Promise<Result> {
   const resolved = await resolveScope(locationId);
   if (!resolved.scope) return { ok: false, error: resolved.error ?? "Can't cash out from this view." };
   const { shopId, submerchantId } = resolved.scope;
 
-  const recipient = await loadTipRecipient({ shopId, submerchantId });
+  const recipient = staffId
+    ? await loadStaffRecipient({ shopId, staffId })
+    : await loadTipRecipient({ shopId, submerchantId });
   if (!recipient) return { ok: false, error: "No tip recipient configured for this shop." };
   if (!recipient.venmo?.token) return { ok: false, error: `${recipient.name} has no Venmo payout method linked.` };
 
@@ -85,4 +94,32 @@ export async function cashOutTipsAction({ locationId }: { locationId?: string } 
     console.error("[tips] cash out failed", err);
     return { ok: false, error: err instanceof PaymentsError ? err.userMessage : "Couldn't cash out tips." };
   }
+}
+
+
+/** Resolves a staff row + Venmo payout method straight from Supabase. */
+async function loadStaffRecipient({ shopId, staffId }: { shopId: string; staffId: string }) {
+  const supabase = getSupabaseAdmin();
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("id,name,cf_user_id")
+    .eq("shop_id", shopId)
+    .eq("id", staffId)
+    .maybeSingle();
+  if (!staff) return undefined;
+  const { data: venmo } = await supabase
+    .from("payout_accounts")
+    .select("display,cf_destination_id")
+    .eq("shop_id", shopId)
+    .eq("staff_id", staff.id)
+    .eq("rail", "venmo")
+    .maybeSingle();
+  return {
+    staffId: staff.id,
+    cfUserId: staff.cf_user_id,
+    name: staff.name,
+    venmo: venmo?.cf_destination_id
+      ? { token: venmo.cf_destination_id, display: venmo.display ?? "Venmo" }
+      : undefined,
+  };
 }

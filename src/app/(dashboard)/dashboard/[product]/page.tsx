@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductPlaceholder } from "@/features/dashboard/components/product-placeholder";
+import { redirectUnlessAdoraPayReady } from "@/features/dashboard/pay-gate";
 import { findMerchantProduct } from "@/features/dashboard/products";
 
 export async function generateMetadata({
@@ -11,6 +12,7 @@ export async function generateMetadata({
 }
 
 export default async function ProductPage({ params }: PageProps<"/dashboard/[product]">) {
+  await redirectUnlessAdoraPayReady();
   const { product } = await params;
   const item = findMerchantProduct(product);
   if (!item) notFound();

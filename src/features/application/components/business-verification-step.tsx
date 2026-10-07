@@ -28,14 +28,11 @@ export function BusinessVerificationStep({
   progress,
   refresh,
   onProgress,
-  onKybFinished,
   onComplete,
 }: {
   progress: SubmerchantProgress;
   refresh: () => Promise<RefreshResult>;
   onProgress: (progress: SubmerchantProgress) => void;
-  /** Fired once this merchant finishes Persona, or continues past a preapproved case. */
-  onKybFinished?: () => void;
   onComplete: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -61,7 +58,6 @@ export function BusinessVerificationStep({
     } catch {
       // Private browsing can reject storage; this visit still advances.
     }
-    onKybFinished?.();
     void markKybCompletedAction();
   };
 
@@ -124,7 +120,7 @@ export function BusinessVerificationStep({
     setOpen(false);
     // Covers the sandbox-preapproved case where Persona never fires onComplete
     // but the user clicked Continue past the "Business verified" card.
-    rememberFinished();
+    void markKybCompletedAction();
     onComplete();
   };
 

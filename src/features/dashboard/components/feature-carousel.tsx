@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { cn } from "cn";
 
+const SLIDE_MS = 4_000;
+
 const SLIDES: { icon: LucideIcon; kicker: string; title: string; body: string }[] = [
   {
     icon: ZapIcon,
@@ -58,7 +60,7 @@ export function FeatureCarousel() {
     if (media.matches) return;
     const timer = window.setInterval(() => {
       setIndex((current) => (current + 1) % SLIDES.length);
-    }, 8000);
+    }, SLIDE_MS);
     return () => window.clearInterval(timer);
   }, [paused, index]);
 
@@ -68,9 +70,9 @@ export function FeatureCarousel() {
 
   return (
     <section
-      className="relative flex h-full min-h-[32rem] flex-col justify-between overflow-hidden bg-shop-fill p-6 text-shop-on-fill sm:p-10"
+      className="relative flex h-full min-h-[32rem] flex-col overflow-hidden bg-shop-fill p-6 text-shop-on-fill sm:p-10"
       aria-roledescription="carousel"
-      aria-label="Why enroll in Adora Pay"
+      aria-label="Adora Pay"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -82,21 +84,20 @@ export function FeatureCarousel() {
         <div className="absolute -top-24 -right-10 size-80 rounded-full bg-shop-accent/35 blur-3xl" />
         <div className="absolute -bottom-28 left-1/4 size-72 rounded-full bg-shop-highlight/40 blur-3xl" />
       </div>
-      <p className="relative text-sm font-semibold tracking-wide text-shop-on-fill/80 uppercase">
-        Why pizzerias enroll in Adora Pay
-      </p>
-      <div
-        className="relative flex max-w-xl flex-col gap-4 pr-48 sm:pr-56 md:pr-64 xl:pr-0"
-        aria-live="polite"
-      >
-        <span className="flex size-12 items-center justify-center rounded-xl bg-shop-on-fill/15">
-          <Icon className="size-8" />
-        </span>
-        <p className="text-sm font-semibold tracking-wide text-shop-on-fill/70">{slide.kicker}</p>
-        <h2 className="font-heading text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-          {slide.title}
-        </h2>
-        <p className="text-lg text-pretty text-shop-on-fill/85">{slide.body}</p>
+      <div className="relative flex flex-1 items-center pt-14 sm:pt-16">
+        <div
+          className="relative ml-6 flex max-w-2xl flex-col gap-5 sm:ml-12 sm:pr-72 lg:ml-16 lg:max-w-[50%] lg:pr-8"
+          aria-live="polite"
+        >
+          <span className="flex size-14 items-center justify-center rounded-xl bg-shop-on-fill/15">
+            <Icon className="size-9" />
+          </span>
+          <p className="text-base font-semibold tracking-wide text-shop-on-fill/70">{slide.kicker}</p>
+          <h2 className="font-heading text-4xl font-bold tracking-tight text-balance sm:text-5xl">
+            {slide.title}
+          </h2>
+          <p className="text-xl text-pretty text-shop-on-fill/85">{slide.body}</p>
+        </div>
       </div>
       <div className="relative flex items-center justify-between gap-4">
         <div className="flex gap-2" role="tablist" aria-label="Reasons to enroll">
@@ -115,26 +116,26 @@ export function FeatureCarousel() {
             />
           ))}
         </div>
-        <div className="flex items-center gap-3">
-          <p className="text-sm tabular-nums text-shop-on-fill/70">
+        <div className="flex items-center gap-4">
+          <p className="text-base tabular-nums text-shop-on-fill/70">
             {index + 1} / {SLIDES.length}
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <button
               type="button"
               aria-label="Previous reason"
               onClick={() => go(index - 1)}
-              className="inline-flex size-8 items-center justify-center rounded-lg border border-shop-on-fill/30 text-shop-on-fill hover:bg-shop-on-fill/10"
+              className="inline-flex size-12 items-center justify-center rounded-xl border border-shop-on-fill/30 text-shop-on-fill hover:bg-shop-on-fill/10 sm:size-14"
             >
-              <ChevronLeftIcon className="size-4" />
+              <ChevronLeftIcon className="size-6 sm:size-7" />
             </button>
             <button
               type="button"
               aria-label="Next reason"
               onClick={() => go(index + 1)}
-              className="inline-flex size-8 items-center justify-center rounded-lg border border-shop-on-fill/30 text-shop-on-fill hover:bg-shop-on-fill/10"
+              className="inline-flex size-12 items-center justify-center rounded-xl border border-shop-on-fill/30 text-shop-on-fill hover:bg-shop-on-fill/10 sm:size-14"
             >
-              <ChevronRightIcon className="size-4" />
+              <ChevronRightIcon className="size-6 sm:size-7" />
             </button>
           </div>
         </div>

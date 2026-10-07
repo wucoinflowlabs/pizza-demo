@@ -10,6 +10,7 @@ import { ColumnHead, FailedLocations, LocationPicker, ServerSearch, ValueFilter,
 import {
   BlockedPill,
   CopyText,
+  PayoutMethodChips,
   CurrencyChip,
   VerificationPill,
   WithdrawerId,
@@ -17,7 +18,7 @@ import {
   shortKey,
   verificationLabel,
 } from "./withdrawal-pills";
-import { WithdrawerDrawer } from "./withdrawer-drawer";
+import { TipsDrawer } from "./tips-drawer";
 
 const PAGE_SIZE = 50;
 
@@ -68,7 +69,6 @@ export function WithdrawersTable({
   search,
   withdrawers,
   timeZone,
-  showMerchant = false,
   locations,
   location,
   failedLocations = [],
@@ -77,8 +77,6 @@ export function WithdrawersTable({
   search: string;
   withdrawers?: WithdrawerRow[];
   timeZone: string;
-  /** Only franchise owners see which store a withdrawer belongs to. */
-  showMerchant?: boolean;
   /** Set for a franchise owner: adds the location picker and column. */
   locations?: LocationOption[];
   /** The picked store, or undefined for all locations. */
@@ -171,22 +169,11 @@ export function WithdrawersTable({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <ColumnHead
-                label="Created at"
-                sort={sort}
-                sortKey="created"
-                onSort={() => setSort((current) => ({ key: "created", dir: current.dir === "desc" ? "asc" : "desc" }))}
-                className="pl-6"
-              />
-              {showMerchant && <ColumnHead label="Merchant" />}
               {locations && <ColumnHead label="Location" />}
-              <ColumnHead label="Name" />
-              <ColumnHead label="IDs" />
+              <ColumnHead label="Name" className="pl-6" />
               <ColumnHead label="Email" />
               <ColumnHead label="Currency" />
-              <ColumnHead label="Blocked" filter={valueFilter("blocked", "Blocked")} />
-              <ColumnHead label="Status" filter={valueFilter("status", "Status")} />
-              <ColumnHead label="Verification" className="pr-6" />
+              <ColumnHead label="Payout methods" className="pr-6" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -200,12 +187,6 @@ export function WithdrawersTable({
                 onKeyDown={(event) => openOnKey(event, row.id)}
                 className="cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-none"
               >
-                <TableCell className="py-3 pl-6 text-foreground/80 tabular-nums">
-                  {compactDate(row.createdAt, timeZone)}
-                </TableCell>
-                {showMerchant && (
-                  <TableCell className="px-4 text-foreground/80">{row.merchantId ?? "—"}</TableCell>
-                )}
                 {locations && (
                   <TableCell className="px-4 text-foreground/80">
                     {row.location ? (
@@ -220,11 +201,8 @@ export function WithdrawersTable({
                     )}
                   </TableCell>
                 )}
-                <TableCell className="px-4 font-medium text-foreground">
+                <TableCell className="py-3 pl-6 font-medium text-foreground">
                   {row.name ?? <span className="text-muted-foreground">—</span>}
-                </TableCell>
-                <TableCell className="px-4 text-foreground/80">
-                  <WithdrawerId value={row.wallet} isUser={row.isUser} />
                 </TableCell>
                 <TableCell className="max-w-56 px-4 text-[11px] text-foreground/80">
                   <CopyText value={row.email} label="email" />
@@ -232,20 +210,8 @@ export function WithdrawersTable({
                 <TableCell className="px-4">
                   <CurrencyChip currency={row.currency} />
                 </TableCell>
-                <TableCell className="px-4">
-                  <BlockedPill blocked={row.blocked} override={row.override} reason={row.blockReason} />
-                </TableCell>
-                <TableCell className="px-4">
-                  <VerificationPill status={row.verification.status} reasons={row.verification.rejectionReasons} />
-                </TableCell>
-                <TableCell className="pr-6">
-                  {row.verification.reference ? (
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      <CopyText value={shortKey(row.verification.reference)} copyValue={row.verification.reference} label="verification reference" mono />
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
+                <TableCell className="px-4 pr-6">
+                  <PayoutMethodChips methods={row.payoutMethods} />
                 </TableCell>
               </TableRow>
             ))}
@@ -281,14 +247,11 @@ export function WithdrawersTable({
         </div>
       )}
       <div ref={portalRef} />
-      <WithdrawerDrawer
+      <TipsDrawer
         withdrawer={selected ?? null}
-        timeZone={timeZone}
-        showMerchant={showMerchant}
+        locationId={selected?.location?.id ?? location}
         container={portalRef}
         onClose={() => setSelectedId(null)}
-        onPrevious={index > 0 ? () => setSelectedId(rows[index - 1].id) : undefined}
-        onNext={index >= 0 && index < rows.length - 1 ? () => setSelectedId(rows[index + 1].id) : undefined}
       />
     </WithdrawersCard>
   );
