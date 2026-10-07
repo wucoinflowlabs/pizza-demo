@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, useTransition, type ReactNode, type RefOb
 import { useRouter } from "next/navigation";
 import { Dialog } from "@base-ui/react/dialog";
 import {
-  CalendarRangeIcon,
   CheckCircle2Icon,
   ClockIcon,
   Loader2Icon,
@@ -29,7 +28,7 @@ const ICON_BUTTON =
 
 type TipData = {
   staff?: { id: string; name: string; cfUserId: string; venmo?: { token: string; display: string } };
-  summary: { todayCents: number; weekCents: number; unpaidCents: number; lastPayout?: { atIso: string; cents: number } };
+  summary: { todayCents: number; unpaidCents: number; lastPayout?: { atIso: string; cents: number } };
   recent: SettledTip[];
   timeZone: string;
 };
@@ -186,9 +185,8 @@ export function TipsDrawer({
                     <LoadingBody />
                   ) : (
                     <>
-                      <section className="grid gap-3 sm:grid-cols-3">
+                      <section className="grid gap-3 sm:grid-cols-2">
                         <Stat label="Today" icon={ClockIcon} cents={payload.summary.todayCents} />
-                        <Stat label="This week" icon={CalendarRangeIcon} cents={payload.summary.weekCents} />
                         <Stat
                           label="Unpaid balance"
                           icon={SparklesIcon}
@@ -296,8 +294,7 @@ function Empty({ icon: Icon, children }: { icon: typeof WalletIcon; children: Re
 function LoadingBody() {
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Skeleton className="h-24 rounded-2xl" />
+      <div className="grid gap-3 sm:grid-cols-2">
         <Skeleton className="h-24 rounded-2xl" />
         <Skeleton className="h-24 rounded-2xl" />
       </div>

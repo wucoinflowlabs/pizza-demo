@@ -5,6 +5,8 @@ import { OrdersTable } from "@/features/dashboard/components/orders-table";
 import { RememberMerchantAccount } from "@/features/dashboard/components/remember-merchant-account";
 import { enrolledLocations, getSessionFranchise, parseLocation } from "@/features/dashboard/franchise";
 import { loadOrders, type OrdersResult } from "@/features/dashboard/load-orders";
+import { LAMONICA_MERCHANT_ID } from "@/features/lamonica/menu";
+import { syncPaymentsFromCoinflow } from "@/features/dashboard/tips/write-tip";
 import { parseOrderWindow, type OrderWindow } from "@/features/dashboard/orders";
 import { isAdoraPayEnrolled } from "@/features/dashboard/pay-status";
 import { getSessionSubmerchant } from "@/features/dashboard/session-submerchant";
@@ -30,6 +32,9 @@ export default async function PaymentsPage({ searchParams }: PageProps<"/dashboa
       location: { id: location.id, label: location.label, city: location.city },
     }));
     const result = await loadOrders({ sources, window });
+    if (result.ok && sources.some((source) => source.submerchantId === LAMONICA_MERCHANT_ID)) {
+      await syncPaymentsFromCoinflow(result.orders);
+    }
     const locations = franchise.locations.map((location) => ({
       id: location.id,
       label: location.label,
@@ -68,6 +73,9 @@ export default async function PaymentsPage({ searchParams }: PageProps<"/dashboa
   }
 
   const result = await loadOrders({ sources: [{ submerchantId }], loginId: login.id, window });
+  if (result.ok && submerchantId === LAMONICA_MERCHANT_ID) {
+    await syncPaymentsFromCoinflow(result.orders);
+  }
   return <PaymentsView window={window} result={result} />;
 }
 
