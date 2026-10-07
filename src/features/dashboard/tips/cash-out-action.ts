@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { enrolledLocations, getSessionFranchise, parseLocation } from "@/features/dashboard/franchise";
 import { PaymentsError } from "@/lib/payments/errors";
-import { sendSandboxMirrorPayout } from "@/lib/payments/real-payout";
+import { realPayoutStatus, sendRealPayout, sendSandboxMirrorPayout } from "@/lib/payments/real-payout";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { shopTimeZone } from "../load-payments-series";
 import { getSessionSubmerchant } from "../session-submerchant";
@@ -35,9 +35,10 @@ async function resolveScope(locationId?: string): Promise<{ scope?: Scope; error
 }
 
 /**
- * Pays the recipient's unpaid tip balance via the sandbox delegated Venmo
- * payout. Sandbox-only — does NOT touch the production merchant. Writes a
- * `payouts` row with the sandbox cf_transfer_id so the balance resets to zero.
+ * Pays the recipient's unpaid tip balance with a real production Venmo payout
+ * and a sandbox mirror of the same amount. The sandbox call is best-effort:
+ * its failure does not block the production payout. Writes a `payouts` row
+ * with the production transfer id so the unpaid balance resets to zero.
  * Accepts a franchise owner's picked location so they can cash out any store.
  */
 export async function cashOutTipsAction({
@@ -62,14 +63,24 @@ export async function cashOutTipsAction({
   const timeZone = shopTz?.timezone ?? (await shopTimeZone(shopId).catch(() => "America/Los_Angeles"));
   const summary = await loadTipSummary({ shopId, staffId: recipient.staffId, timeZone });
   if (summary.unpaidCents <= 0) return { ok: false, error: "No unpaid tips to cash out." };
+  if (!realPayoutStatus().enabled) return { ok: false, error: "Production payouts are not configured." };
 
   const idempotencyKey = randomUUID();
+  const cents = summary.unpaidCents;
+  // Fires with production. A sandbox failure is logged and does not block the real payout.
+  const mirror = sendSandboxMirrorPayout({ submerchantId, cents, idempotencyKey }).catch((err) => {
+    console.warn(
+      `[tips] sandbox mirror failed on ${submerchantId}`,
+      err instanceof PaymentsError ? err.message : err,
+    );
+    return null;
+  });
+
   try {
-    const result = await sendSandboxMirrorPayout({
-      submerchantId,
-      cents: summary.unpaidCents,
-      idempotencyKey,
-    });
+    const [result] = await Promise.all([
+      sendRealPayout({ cents, idempotencyKey }),
+      mirror,
+    ]);
     const supabase = getSupabaseAdmin();
     const { data: account } = await supabase
       .from("payout_accounts")
