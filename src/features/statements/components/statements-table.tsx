@@ -5,7 +5,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FailedLocations, LocationPicker, type LocationOption } from "@/features/dashboard/components/table-controls";
-import { formatBps, type FeeSchedule } from "../fee-schedule";
+import { formatBps, formatSaasRate, type FeeSchedule } from "../fee-schedule";
 import type { StatementDay } from "../load-statements";
 
 function money(cents: number) {
@@ -57,7 +57,7 @@ export function StatementsTable({
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-shop-ink">Daily statements</CardTitle>
         <CardDescription>
-          Every settled payment, with Adora&apos;s SaaS fee ({formatBps(schedule.saasBps)}) and processing, the
+          Every settled payment, with Adora&apos;s SaaS fee ({formatSaasRate(schedule)} per payment) and processing, the
           hardware program ({money(schedule.hardwareDailyCents)}/day per location) and your royalty (
           {formatBps(schedule.royaltyBps)}) netted out. Business days run midnight to midnight Pacific.
         </CardDescription>

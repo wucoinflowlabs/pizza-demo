@@ -2,6 +2,7 @@ import "server-only";
 import { Document, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import type { ReactNode } from "react";
 import type { DailyStatement, FranchiseSummary, StatementTotals } from "../statement";
+import { formatSaasRate } from "../fee-schedule";
 
 const NAVY = "#0d3d85";
 const BLUE = "#447eec";
@@ -172,7 +173,7 @@ function Waterfall({ statement }: { statement: DailyStatement }) {
   const rows: [string, string][] = [
     [`Gross sales (${totals.count} payments)`, money(totals.grossCents)],
     ["Less: processing fees absorbed by restaurant", less(totals.processingCents)],
-    [`Less: Adora SaaS fee (${(schedule.saasBps / 100).toFixed(2)}%)`, less(totals.saasCents)],
+    [`Less: Adora SaaS fee (${formatSaasRate(schedule)} per payment)`, less(totals.saasCents)],
     [`Less: franchise royalty (${(schedule.royaltyBps / 100).toFixed(2)}%)`, less(totals.royaltyCents)],
     ["Less: hardware program (daily)", less(totals.hardwareCents)],
   ];

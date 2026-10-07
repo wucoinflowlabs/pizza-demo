@@ -16,7 +16,7 @@ const Input = z.object({
 });
 
 /**
- * Signs the order's amount and Adora's marketplace fee (SaaS + royalty) so
+ * Signs the order's amount and Adora's marketplace fee (SaaS + royalty, plus a flat per-payment fee) so
  * Coinflow nets them out of the payment before Lamonica settles. The total is
  * recomputed from the menu here; the browser only says what's in the cart.
  */
@@ -39,6 +39,7 @@ export async function createLamonicaCheckoutToken(
     const jwtToken = await createCheckoutJwt(LAMONICA_MERCHANT_ID, {
       subtotal: { cents: totalCents, currency: "USD" },
       feePercentage: marketplaceFeePercent(schedule),
+      fixedFee: { cents: schedule.saasFixedCents },
       webhookInfo: { fees, tipCents },
     });
     return { jwtToken, fees };

@@ -2,7 +2,7 @@ import type { CoinflowPayment } from "@/lib/payments/types";
 import { toOrder, type OrderMethod } from "@/features/dashboard/orders";
 import { PAYMENT_METHODS, type PaymentMethodKey } from "@/features/dashboard/payments-series";
 import { dayIn } from "@/features/dashboard/withdraw-range";
-import { formatBps, type ChargedRates, type FeeSchedule } from "./fee-schedule";
+import { formatBps, formatSaasRate, type ChargedRates, type FeeSchedule } from "./fee-schedule";
 
 /** Payments whose funds reached the restaurant. Everything else is listed but not counted. */
 const COUNTED_STATUSES = new Set(["SETTLED", "DEPOSITED"]);
@@ -94,18 +94,23 @@ function totalsOf(payment: CoinflowPayment) {
   return (payment.totals ?? {}) as Fields;
 }
 
-/** The SaaS and royalty rates stamped on the payment at checkout, if any. */
+/** The SaaS and royalty rates stamped on the payment at checkout, if any. Older payments had no flat fee. */
 export function feeRatesOf(payment: CoinflowPayment): ChargedRates | undefined {
   const fees = ((payment as unknown as Fields).webhookInfo as Fields | undefined)?.fees as Fields | undefined;
   if (!fees || typeof fees.saasBps !== "number" || typeof fees.royaltyBps !== "number") return undefined;
-  return { version: String(fees.version ?? ""), saasBps: fees.saasBps, royaltyBps: fees.royaltyBps };
+  return {
+    version: String(fees.version ?? ""),
+    saasBps: fees.saasBps,
+    saasFixedCents: typeof fees.saasFixedCents === "number" ? fees.saasFixedCents : 0,
+    royaltyBps: fees.royaltyBps,
+  };
 }
 
 /**
  * The marketplace fee Coinflow took from this payment's subtotal for Adora
  * (SaaS + royalty). Read from whatever totals field Coinflow reports it in;
- * otherwise derived from the rates stamped at checkout, which is the same
- * `feePercentage` Coinflow applied. Payments from before fees were turned on
+ * otherwise derived from the rates stamped at checkout, which are the same
+ * `feePercentage` and `fixedFee` Coinflow applied. Payments from before fees were turned on
  * carry neither and owe nothing.
  */
 export function marketplaceFeeCents(payment: CoinflowPayment) {
@@ -116,13 +121,18 @@ export function marketplaceFeeCents(payment: CoinflowPayment) {
   const rates = feeRatesOf(payment);
   if (!rates) return 0;
   const subtotal = cents(totals.subtotal);
-  return Math.round((subtotal * (rates.saasBps + rates.royaltyBps)) / 10_000);
+  return Math.round((subtotal * (rates.saasBps + rates.royaltyBps)) / 10_000) + rates.saasFixedCents;
 }
 
-/** Splits the combined marketplace fee by the rates it was charged at, so the parts always add back up. */
-function splitMarketplaceFee(feeCents: number, rates: Pick<ChargedRates, "saasBps" | "royaltyBps">) {
+/**
+ * Splits the combined marketplace fee by the rates it was charged at, so the parts always add back up.
+ * The flat fee is all SaaS; only the percentage part is shared with the royalty.
+ */
+function splitMarketplaceFee(feeCents: number, rates: Pick<ChargedRates, "saasBps" | "saasFixedCents" | "royaltyBps">) {
+  const fixedCents = Math.min(rates.saasFixedCents, feeCents);
+  const percentCents = feeCents - fixedCents;
   const combined = rates.saasBps + rates.royaltyBps;
-  const saasCents = combined === 0 ? 0 : Math.round((feeCents * rates.saasBps) / combined);
+  const saasCents = fixedCents + (combined === 0 ? 0 : Math.round((percentCents * rates.saasBps) / combined));
   return { saasCents, royaltyCents: feeCents - saasCents };
 }
 
@@ -251,7 +261,7 @@ export function buildDailyStatement({
       payee: "Adora",
       description: "Software and hardware program. SaaS is netted by Coinflow on each payment.",
       lines: [
-        { label: "Adora SaaS fee", basis: `${formatBps(schedule.saasBps)} of gross sales`, cents: saasCents },
+        { label: "Adora SaaS fee", basis: `${formatSaasRate(schedule)} per payment`, cents: saasCents },
         { label: "Hardware program", basis: "Flat daily, per location", cents: hardwareCents },
       ],
       totalCents: saasCents + hardwareCents,
