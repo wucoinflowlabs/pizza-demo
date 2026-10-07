@@ -18,7 +18,7 @@ import {
   setLoginSubmerchantId,
 } from "@/lib/merchant-logins";
 import { PaymentsError } from "@/lib/payments/errors";
-import { saveOnboardingDraft, submitApplicationForReview, submitOnboardingForm } from "@/lib/payments/onboarding";
+import { getOnboardingForm, saveOnboardingDraft, submitApplicationForReview, submitOnboardingForm } from "@/lib/payments/onboarding";
 import { findSubmerchantIdByEmail } from "@/lib/payments/submerchants";
 import { createWithAvailableId, toDraftFields } from "@/lib/submerchant-account";
 import { getSubmerchantProgress, type SubmerchantProgress } from "@/lib/payments/verification";
@@ -204,7 +204,15 @@ export async function submitAdoraPayApplication(): Promise<
     const before = await getSubmerchantProgress(merchantId);
     if (before.verificationStatus !== "approved" || !before.onboardingFormSubmitted)
       return { ok: false, message: "Finish the outstanding tasks before submitting." };
-    if (!before.applicationSubmitted) await submitApplicationForReview(merchantId);
+    if (!before.applicationSubmitted) {
+      try {
+        await submitApplicationForReview(merchantId);
+      } catch (reviewErr) {
+        const stored = await getOnboardingForm(merchantId).catch(() => null);
+        console.error("[dashboard] /review failed; stored form was:", JSON.stringify(stored, null, 2));
+        throw reviewErr;
+      }
+    }
     return { ok: true, progress: await getSubmerchantProgress(merchantId) };
   } catch (err) {
     if (err instanceof PaymentsError && err.code === "ALREADY_SUBMITTED")
