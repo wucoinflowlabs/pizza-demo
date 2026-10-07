@@ -53,6 +53,7 @@ export const FIXED_FIELDS = {
   payinsMaximumTransactionSize: { currency: "usd", amount: 1_000 },
   payoutsAverageTransactionSize: { currency: "usd", amount: 40 },
   payoutsMaximumTransactionSize: { currency: "usd", amount: 1_000 },
+  payoutsMonthlyVolume: { currency: "usd", amount: 10_000 },
   pciComplianceStatus: "no",
   historicalChargebackRate: "<0.25%",
   averageDollarValueChargeback: "25",
@@ -67,7 +68,6 @@ export const ADORA_PREFILL: FormValues = {
   acceptedPaymentsBefore: "yes",
   currentRunway: ">18 months/profitable",
   payinsMonthlyVolume: { currency: "usd", amount: 10_000 },
-  payoutsMonthlyVolume: { currency: "usd", amount: 10_000 },
   cardNotPresentPercent: "40",
   payinMethods: PAYIN_METHOD_OPTIONS.map((option) => option.value).join(","),
   payoutMethods: PAYOUT_METHOD_OPTIONS.map((option) => option.value).join(","),
@@ -176,14 +176,6 @@ export const FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     audience: "platform",
     sectionHeader: "Production Website URLs",
     conditional: { dependsOn: "cardNotPresentPercent", value: 0, compare: "gt" },
-  },
-  {
-    name: "payoutsMonthlyVolume",
-    type: "money-amount",
-    label: "Estimated monthly payout volume across third-party payout products",
-    placeholder: "Estimated monthly payout volume",
-    required: true,
-    audience: "platform",
   },
 ];
 
