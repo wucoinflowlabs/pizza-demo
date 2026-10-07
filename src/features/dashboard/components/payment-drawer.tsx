@@ -13,10 +13,6 @@ import {
   NfcIcon,
   ReceiptIcon,
   ScrollTextIcon,
-  ShieldAlertIcon,
-  ShieldCheckIcon,
-  ShieldIcon,
-  ShieldXIcon,
   TriangleAlertIcon,
   UserRoundIcon,
   XIcon,
@@ -30,6 +26,7 @@ import type { PaymentDetail } from "../payment-detail";
 import { AppleLogo, CopyableId, MethodPill, StatusPill, cardBrand, humanize, methodLabel, useCopy } from "./payment-pills";
 import { RefundDialog } from "./refund-dialog";
 import { SimulateChargebackDialog } from "./simulate-chargeback-dialog";
+import { TipAdjustDialog } from "./tip-adjust-dialog";
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
@@ -144,24 +141,7 @@ function MethodTile({ detail }: { detail: PaymentDetail }) {
   );
 }
 
-function protectionTone(decision?: string) {
-  if (!decision) return { tone: "muted" as const, icon: ShieldIcon };
-  if (/^approved$/i.test(decision)) return { tone: "good" as const, icon: ShieldCheckIcon };
-  if (/rejected|overridden/i.test(decision)) return { tone: "bad" as const, icon: ShieldXIcon };
-  if (/pending/i.test(decision)) return { tone: "warn" as const, icon: ShieldAlertIcon };
-  return { tone: "muted" as const, icon: ShieldIcon };
-}
-
-function threeDsTone(status?: string) {
-  if (!status) return { tone: "muted" as const, icon: ShieldIcon };
-  if (/rejected|error/i.test(status)) return { tone: "bad" as const, icon: ShieldXIcon };
-  if (/challenge|required/i.test(status)) return { tone: "warn" as const, icon: ShieldAlertIcon };
-  return { tone: "good" as const, icon: ShieldCheckIcon };
-}
-
 function DetailBody({ detail, timeZone }: { detail: PaymentDetail; timeZone: string }) {
-  const protection = protectionTone(detail.protection.decision);
-  const threeDs = threeDsTone(detail.threeDs.status);
   const { decline, ip, device, customer, card } = detail;
 
   return (
@@ -185,16 +165,6 @@ function DetailBody({ detail, timeZone }: { detail: PaymentDetail; timeZone: str
           )}
         </Section>
       )}
-
-      <Section
-        icon={protection.icon}
-        tone={protection.tone}
-        title={`Chargeback protection: ${detail.protection.decision ? humanize(detail.protection.decision) : "None"}`}
-      >
-        {detail.protection.description}
-      </Section>
-
-      <Section icon={threeDs.icon} tone={threeDs.tone} title={detail.threeDs.detail} />
 
       {ip && (
         <Section icon={GlobeIcon} tone={ip.flags.length ? "warn" : "muted"} title={`IP location: ${ip.address}`}>
@@ -469,6 +439,17 @@ export function PaymentDrawer({
                           onRefunded();
                         }}
                       />
+                      {detail.tipAdjustable && (
+                        <TipAdjustDialog
+                          detail={detail}
+                          locationId={locationId}
+                          container={container}
+                          onAdjusted={() => {
+                            forget(detail.id);
+                            onRefunded();
+                          }}
+                        />
+                      )}
                     </>
                   )}
                   <button

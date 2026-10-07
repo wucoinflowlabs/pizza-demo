@@ -33,16 +33,6 @@ import {
 } from "@/lib/payments/submerchants";
 import { createWithAvailableId, toCreateBody, toDraftFields } from "@/lib/submerchant-account";
 import { startFranchiseSession, startMerchantSession } from "@/lib/session";
-import {
-  chainAddresses,
-  getSettlementAddresses,
-  type RawSettlementAddresses,
-} from "@/lib/payments/settlement";
-import {
-  alignSettlementWithParent,
-  payoutStatus,
-  type PayoutStatus,
-} from "@/lib/settlement-setup";
 
 export type ApplicationSummary = {
   merchantId: string;
@@ -58,7 +48,6 @@ export type ApplicationSummary = {
   /** When the merchant submitted the onboarding form (from Supabase). */
   formSubmittedAt?: string;
   approved: boolean;
-  payouts: PayoutStatus;
 };
 
 type ListedSubmerchant = {
@@ -73,7 +62,6 @@ type ListedSubmerchant = {
     applicationSubmittedAt?: string;
   };
   blocked?: unknown;
-  settlementAddresses?: RawSettlementAddresses;
 };
 
 
@@ -123,9 +111,8 @@ function isApplicationApproved(submerchant: ListedSubmerchant): boolean {
 
 /** Only the fields the operator table shows — the raw records include API keys. */
 export async function listApplications(): Promise<ApplicationSummary[]> {
-  const [submerchants, parent, shopTimesByMerchantId] = await Promise.all([
+  const [submerchants, shopTimesByMerchantId] = await Promise.all([
     listSubmerchantRecords(),
-    getSettlementAddresses(),
     loadShopTimestamps(),
   ]);
   return submerchants
@@ -146,44 +133,9 @@ export async function listApplications(): Promise<ApplicationSummary[]> {
         kybCompletedAt: shopTimesByMerchantId.get(submerchant.merchantId)?.kybCompletedAt,
         formSubmittedAt: shopTimesByMerchantId.get(submerchant.merchantId)?.formSubmittedAt,
         approved,
-        payouts: payoutStatus({
-          approved,
-          parent,
-          child: chainAddresses(submerchant.settlementAddresses),
-        }),
       };
     })
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
-}
-
-/**
- * Coinflow sends no webhook when an admin approves an account, so each visit
- * to the operator screen points newly approved businesses' settlement at
- * Adora's wallet. Only accounts that are unblocked and have submitted onboarding
- * details, and still need a wallet, are touched.
- */
-export async function sweepSettlements(): Promise<{ configured: string[]; failed: string[] }> {
-  const [submerchants, parent] = await Promise.all([
-    listSubmerchantRecords(),
-    getSettlementAddresses(),
-  ]);
-
-  const needsSetup = submerchants.filter((submerchant) => {
-    const child = chainAddresses(submerchant.settlementAddresses);
-    return payoutStatus({ approved: isApplicationApproved(submerchant), parent, child }) === "missing";
-  });
-
-  const configured: string[] = [];
-  const failed: string[] = [];
-  for (const submerchant of needsSetup) {
-    const state = await alignSettlementWithParent({
-      submerchantId: submerchant.merchantId,
-      parent,
-      child: chainAddresses(submerchant.settlementAddresses),
-    });
-    (state === "configured" ? configured : failed).push(submerchant.merchantId);
-  }
-  return { configured, failed };
 }
 
 export async function getInviteUrl(merchantId: string): Promise<string> {

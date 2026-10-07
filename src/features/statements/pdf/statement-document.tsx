@@ -2,9 +2,9 @@ import "server-only";
 import { Document, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import type { ReactNode } from "react";
 import type { DailyStatement, FranchiseSummary, StatementTotals } from "../statement";
+import { formatBps, formatSaasRate } from "../fee-schedule";
 
 const NAVY = "#0d3d85";
-const BLUE = "#447eec";
 const INK = "#1c1f26";
 const MUTED = "#6b7280";
 const RULE = "#e5e7eb";
@@ -12,12 +12,9 @@ const TINT = "#f3f6fd";
 
 const styles = StyleSheet.create({
   page: { paddingTop: 36, paddingBottom: 56, paddingHorizontal: 36, fontFamily: "Helvetica", fontSize: 9, color: INK },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 },
-  wordmark: { fontFamily: "Helvetica-Bold", fontSize: 20, color: NAVY, letterSpacing: -0.5 },
-  wordmarkPay: { color: BLUE },
-  kicker: { fontSize: 8, color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 },
-  title: { fontFamily: "Helvetica-Bold", fontSize: 14, textAlign: "right" },
-  meta: { fontSize: 8.5, color: MUTED, textAlign: "right", marginTop: 2 },
+  header: { marginBottom: 18 },
+  title: { fontFamily: "Helvetica-Bold", fontSize: 14 },
+  meta: { fontSize: 8.5, color: MUTED, marginTop: 2 },
   parties: { flexDirection: "row", gap: 12, marginBottom: 16 },
   party: { flex: 1, borderWidth: 1, borderColor: RULE, borderRadius: 4, padding: 10 },
   partyLabel: { fontSize: 7.5, color: MUTED, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 },
@@ -41,8 +38,6 @@ const styles = StyleSheet.create({
   num: { textAlign: "right" },
   muted: { color: MUTED },
   note: { fontSize: 8, color: MUTED, marginTop: 4 },
-  group: { marginBottom: 8 },
-  groupHead: { flexDirection: "row", justifyContent: "space-between", backgroundColor: TINT, padding: 5 },
   footer: {
     position: "absolute",
     bottom: 24,
@@ -124,17 +119,6 @@ function Cells({ columns, values, style }: { columns: Column[]; values: ReactNod
   );
 }
 
-function Wordmark({ kicker }: { kicker: string }) {
-  return (
-    <View>
-      <Text style={styles.wordmark}>
-        adora<Text style={styles.wordmarkPay}>pay</Text>
-      </Text>
-      <Text style={styles.kicker}>{kicker}</Text>
-    </View>
-  );
-}
-
 function Footer({ left }: { left: string }) {
   return (
     <View style={styles.footer} fixed>
@@ -159,7 +143,11 @@ function SummaryTiles({ totals, settledTo = "the restaurant" }: { totals: Statem
   return (
     <View style={styles.tiles}>
       <Tile label="Gross sales" value={money(totals.grossCents)} note={`${totals.count} settled payments`} />
-      <Tile label="Total deductions" value={less(totals.deductionsCents)} note="Processing, Adora and royalty" />
+      <Tile
+        label="Total fees"
+        value={less(totals.grossCents - totals.netCents)}
+        note="Processing, franchise, SaaS and hardware"
+      />
       <Tile label="Net deposit" value={money(totals.netCents)} note={`Settled to ${settledTo}`} highlight />
     </View>
   );
@@ -168,13 +156,19 @@ function SummaryTiles({ totals, settledTo = "the restaurant" }: { totals: Statem
 const WATERFALL: Column[] = [{ width: "70%" }, { width: "30%", align: "right" }];
 
 function Waterfall({ statement }: { statement: DailyStatement }) {
-  const { totals, schedule } = statement;
+  const { totals, schedule, charges, franchise } = statement;
   const rows: [string, string][] = [
     [`Gross sales (${totals.count} payments)`, money(totals.grossCents)],
-    ["Less: processing fees absorbed by restaurant", less(totals.processingCents)],
-    [`Less: Adora SaaS fee (${(schedule.saasBps / 100).toFixed(2)}%)`, less(totals.saasCents)],
-    [`Less: franchise royalty (${(schedule.royaltyBps / 100).toFixed(2)}%)`, less(totals.royaltyCents)],
-    ["Less: hardware program (daily)", less(totals.hardwareCents)],
+    [`Less: processing fee (${formatSaasRate(schedule)} per payment)`, less(totals.processingCents)],
+    [
+      `Less: franchise fee (${formatBps(charges.franchiseFeeBps)} of gross, to ${franchise.name})`,
+      less(totals.franchiseFeeCents),
+    ],
+    [`Less: SaaS fee (${money(charges.saasMonthlyCents)}/mo, prorated)`, less(totals.saasCents)],
+    [
+      `Less: hardware (${charges.devicesPerLocation} devices × ${money(charges.hardwareMonthlyCentsPerDevice)}/mo, prorated)`,
+      less(totals.hardwareCents),
+    ],
   ];
   return (
     <View style={styles.section} wrap={false}>
@@ -187,74 +181,18 @@ function Waterfall({ statement }: { statement: DailyStatement }) {
       <View style={styles.totalRow}>
         <Cells columns={WATERFALL} values={["Net deposit", money(totals.netCents)]} style={styles.bold} />
       </View>
-      {totals.dinerFeesCents > 0 && (
-        <Text style={styles.note}>
-          Diners paid {money(totals.dinerFeesCents)} in processing fees at checkout. Those are passed through to
-          Coinflow and are not deducted from the restaurant.
-        </Text>
-      )}
-    </View>
-  );
-}
-
-const FEE_COLUMNS: Column[] = [{ width: "40%" }, { width: "40%" }, { width: "20%", align: "right" }];
-
-function FeeBreakdown({ statement }: { statement: DailyStatement }) {
-  return (
-    <View style={styles.section} wrap={false}>
-      <Text style={styles.sectionTitle}>Fees by recipient</Text>
-      {statement.fees.map((group) => (
-        <View key={group.payee} style={styles.group}>
-          <View style={styles.groupHead}>
-            <Text style={styles.bold}>{group.payee}</Text>
-            <Text style={styles.bold}>{less(group.totalCents)}</Text>
-          </View>
-          <Text style={[styles.note, { marginBottom: 2, marginTop: 3 }]}>{group.description}</Text>
-          {group.lines.length === 0 ? (
-            <View style={styles.row}>
-              <Text style={styles.muted}>No fees absorbed by the restaurant.</Text>
-            </View>
-          ) : (
-            group.lines.map((line) => (
-              <View key={line.label} style={styles.row}>
-                <Cells columns={FEE_COLUMNS} values={[line.label, line.basis, less(line.cents)]} />
-              </View>
-            ))
-          )}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-const MIX_COLUMNS: Column[] = [{ width: "50%" }, { width: "20%", align: "right" }, { width: "30%", align: "right" }];
-
-function MethodMix({ statement }: { statement: DailyStatement }) {
-  if (statement.methods.length === 0) return null;
-  return (
-    <View style={styles.section} wrap={false}>
-      <Text style={styles.sectionTitle}>Payment methods</Text>
-      <View style={styles.headRow}>
-        <Cells columns={MIX_COLUMNS} values={["Method", "Payments", "Gross"]} style={styles.head} />
-      </View>
-      {statement.methods.map((method) => (
-        <View key={method.label} style={styles.row}>
-          <Cells columns={MIX_COLUMNS} values={[method.label, String(method.count), money(method.grossCents)]} />
-        </View>
-      ))}
     </View>
   );
 }
 
 const TX_COLUMNS: Column[] = [
-  { width: "9%" },
-  { width: "17%" },
-  { width: "14%" },
-  { width: "12%", align: "right" },
-  { width: "12%", align: "right" },
-  { width: "12%", align: "right" },
-  { width: "12%", align: "right" },
-  { width: "12%", align: "right" },
+  { width: "10%" },
+  { width: "18%" },
+  { width: "16%" },
+  { width: "13%", align: "right" },
+  { width: "14%", align: "right" },
+  { width: "16%", align: "right" },
+  { width: "13%", align: "right" },
 ];
 
 function Transactions({ statement }: { statement: DailyStatement }) {
@@ -265,7 +203,7 @@ function Transactions({ statement }: { statement: DailyStatement }) {
       <View style={styles.headRow} wrap={false}>
         <Cells
           columns={TX_COLUMNS}
-          values={["Time", "Payment", "Method", "Gross", "Processing", "Adora SaaS", "Royalty", "Net"]}
+          values={["Time", "Payment", "Method", "Gross", "Processing", "Franchise fee", "Net"]}
           style={styles.head}
         />
       </View>
@@ -284,8 +222,7 @@ function Transactions({ statement }: { statement: DailyStatement }) {
                 line.method,
                 money(line.grossCents),
                 less(line.processingCents),
-                less(line.saasCents),
-                less(line.royaltyCents),
+                less(line.franchiseFeeCents),
                 money(line.netCents),
               ]}
             />
@@ -301,55 +238,15 @@ function Transactions({ statement }: { statement: DailyStatement }) {
             "",
             money(totals.grossCents),
             less(totals.processingCents),
-            less(totals.saasCents),
-            less(totals.royaltyCents),
-            money(totals.grossCents - totals.processingCents - totals.saasCents - totals.royaltyCents),
+            less(totals.franchiseFeeCents),
+            money(totals.grossCents - totals.processingCents - totals.franchiseFeeCents),
           ]}
           style={styles.bold}
         />
       </View>
       <Text style={styles.note}>
-        The hardware program is billed once per day, not per payment: {money(totals.netCents + totals.hardwareCents)}{" "}
-        net of payment fees, less {money(totals.hardwareCents)} hardware, is the {money(totals.netCents)} net deposit.
+        SaaS and hardware are monthly fees prorated to the day and deducted once, not per payment.
       </Text>
-    </View>
-  );
-}
-
-const EXCLUDED_COLUMNS: Column[] = [
-  { width: "12%" },
-  { width: "28%" },
-  { width: "25%" },
-  { width: "17%" },
-  { width: "18%", align: "right" },
-];
-
-function Excluded({ statement }: { statement: DailyStatement }) {
-  if (statement.excluded.length === 0) return null;
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Not included ({statement.excluded.length})</Text>
-      <Text style={[styles.note, { marginTop: 0, marginBottom: 4 }]}>
-        Failed, pending or reversed payments. No money moved for the restaurant, so they aren&apos;t in the totals.
-      </Text>
-      <View style={styles.headRow} wrap={false}>
-        <Cells columns={EXCLUDED_COLUMNS} values={["Time", "Payment", "Method", "Status", "Amount"]} style={styles.head} />
-      </View>
-      {statement.excluded.map((line) => (
-        <View key={line.id} style={styles.row} wrap={false}>
-          <Cells
-            columns={EXCLUDED_COLUMNS}
-            values={[
-              timeOf(line.createdAt, statement.timeZone),
-              shortId(line.id),
-              line.method,
-              line.status,
-              money(line.grossCents),
-            ]}
-            style={styles.muted}
-          />
-        </View>
-      ))}
     </View>
   );
 }
@@ -359,12 +256,9 @@ function StatementPage({ statement }: { statement: DailyStatement }) {
   return (
     <Page size="LETTER" style={styles.page}>
       <View style={styles.header}>
-        <Wordmark kicker="Merchant statement" />
-        <View>
-          <Text style={styles.title}>Daily Statement</Text>
-          <Text style={styles.meta}>{longDate(day)}</Text>
-          <Text style={styles.meta}>No. {statement.number}</Text>
-        </View>
+        <Text style={styles.title}>Daily Statement</Text>
+        <Text style={styles.meta}>{longDate(day)}</Text>
+        <Text style={styles.meta}>No. {statement.number}</Text>
       </View>
 
       <View style={styles.parties}>
@@ -391,24 +285,21 @@ function StatementPage({ statement }: { statement: DailyStatement }) {
 
       <SummaryTiles totals={statement.totals} />
       <Waterfall statement={statement} />
-      <FeeBreakdown statement={statement} />
-      <MethodMix statement={statement} />
       <Transactions statement={statement} />
-      <Excluded statement={statement} />
       <Footer left={statement.number} />
     </Page>
   );
 }
 
 const SUMMARY_COLUMNS: Column[] = [
-  { width: "24%" },
-  { width: "8%", align: "right" },
+  { width: "20%" },
+  { width: "6%", align: "right" },
   { width: "12%", align: "right" },
-  { width: "11%", align: "right" },
-  { width: "11%", align: "right" },
-  { width: "11%", align: "right" },
-  { width: "11%", align: "right" },
+  { width: "13%", align: "right" },
+  { width: "14%", align: "right" },
+  { width: "10%", align: "right" },
   { width: "12%", align: "right" },
+  { width: "13%", align: "right" },
 ];
 
 function summaryValues(label: string, totals: StatementTotals) {
@@ -417,8 +308,8 @@ function summaryValues(label: string, totals: StatementTotals) {
     String(totals.count),
     money(totals.grossCents),
     less(totals.processingCents),
+    less(totals.franchiseFeeCents),
     less(totals.saasCents),
-    less(totals.royaltyCents),
     less(totals.hardwareCents),
     money(totals.netCents),
   ];
@@ -438,12 +329,9 @@ function FranchiseCover({
   return (
     <Page size="LETTER" style={styles.page}>
       <View style={styles.header}>
-        <Wordmark kicker="Franchise statement" />
-        <View>
-          <Text style={styles.title}>Daily Franchise Statement</Text>
-          <Text style={styles.meta}>{longDate(first.day)}</Text>
-          <Text style={styles.meta}>No. {number}</Text>
-        </View>
+        <Text style={styles.title}>Daily Franchise Statement</Text>
+        <Text style={styles.meta}>{longDate(first.day)}</Text>
+        <Text style={styles.meta}>No. {number}</Text>
       </View>
 
       <View style={styles.parties}>
@@ -470,7 +358,7 @@ function FranchiseCover({
         <View style={styles.headRow} wrap={false}>
           <Cells
             columns={SUMMARY_COLUMNS}
-            values={["Location", "Pmts", "Gross", "Processing", "Adora SaaS", "Royalty", "Hardware", "Net"]}
+            values={["Location", "Pmts", "Gross", "Processing", "Franchise fee", "SaaS", "Hardware", "Net"]}
             style={styles.head}
           />
         </View>
@@ -482,10 +370,7 @@ function FranchiseCover({
         <View style={styles.totalRow} wrap={false}>
           <Cells columns={SUMMARY_COLUMNS} values={summaryValues("All locations", summary.totals)} style={styles.bold} />
         </View>
-        <Text style={styles.note}>
-          Royalty of {money(summary.totals.royaltyCents)} was netted by Coinflow across all locations and is remitted to{" "}
-          {first.franchise.name} by Adora. Each location&apos;s statement follows.
-        </Text>
+        <Text style={styles.note}>Each location&apos;s statement follows.</Text>
         {failedLocations.length > 0 && (
           <Text style={[styles.note, { color: "#b91c1c" }]}>
             Payments couldn&apos;t be loaded for: {failedLocations.join(", ")}. Those locations are left out.

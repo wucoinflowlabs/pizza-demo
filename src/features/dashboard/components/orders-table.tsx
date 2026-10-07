@@ -20,9 +20,7 @@ import { PaymentDrawer } from "./payment-drawer";
 import {
   CopyableId,
   MethodPill,
-  ProtectionPill,
   StatusPill,
-  ThreeDsPill,
   humanize,
   methodLabel,
   useCopy,
@@ -51,7 +49,7 @@ const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" 
 type SortKey = "date" | "subtotal";
 type Sort = SortOf<SortKey>;
 type TextColumn = "id" | "customer";
-type ValueColumn = "method" | "status" | "code" | "protection";
+type ValueColumn = "method" | "status" | "code";
 type Filters = Record<TextColumn, string> & Record<ValueColumn, string[]>;
 
 const NO_FILTERS: Filters = {
@@ -60,7 +58,6 @@ const NO_FILTERS: Filters = {
   method: [],
   status: [],
   code: [],
-  protection: [],
 };
 
 function valueOf(order: Order, column: ValueColumn) {
@@ -226,7 +223,6 @@ export function OrdersTable({
       method: collect("method"),
       status: collect("status"),
       code: collect("code"),
-      protection: collect("protection"),
     };
   }, [orders]);
 
@@ -236,7 +232,7 @@ export function OrdersTable({
       (["id", "customer"] as const).every(
         (column) => !needle(filters[column]) || (order[column] ?? "").toLowerCase().includes(needle(filters[column])),
       ) &&
-      (["method", "status", "code", "protection"] as const).every(
+      (["method", "status", "code"] as const).every(
         (column) => filters[column].length === 0 || filters[column].includes(valueOf(order, column)),
       );
     const direction = sort.dir === "asc" ? 1 : -1;
@@ -318,11 +314,8 @@ export function OrdersTable({
               <ColumnHead label="Payment ID" filter={textFilter("id", "Payment ID")} />
               <ColumnHead label="Method" filter={valueFilter("method", "Method")} />
               <ColumnHead label="Subtotal" sort={sort} sortKey="subtotal" onSort={toggleSort} />
-              <ColumnHead label="Customer" filter={textFilter("customer", "Customer")} />
               <ColumnHead label="Status" filter={valueFilter("status", "Status")} />
               <ColumnHead label="Code" filter={valueFilter("code", "Code")} />
-              <ColumnHead label="Protection" filter={valueFilter("protection", "Protection")} />
-              <ColumnHead label="3D Secure" />
               <TableHead className="pr-6">
                 <span className="sr-only">Actions</span>
               </TableHead>
@@ -380,19 +373,10 @@ export function OrdersTable({
                   <TableCell className="px-4 text-foreground/80 tabular-nums">
                     {usd.format(order.subtotalCents / 100)}
                   </TableCell>
-                  <TableCell className="px-4 text-foreground/80">
-                    <CopyableId value={order.customer} label="customer ID" />
-                  </TableCell>
                   <TableCell className="px-4">
                     <StatusPill status={order.status} />
                   </TableCell>
                   <TableCell className="px-4 font-mono text-xs text-foreground/80">{order.code}</TableCell>
-                  <TableCell className="px-4">
-                    <ProtectionPill decision={order.protection} />
-                  </TableCell>
-                  <TableCell className="px-4">
-                    <ThreeDsPill result={order.threeDs} />
-                  </TableCell>
                   <TableCell className="pr-6 text-right">
                     <RowActions
                       order={order}

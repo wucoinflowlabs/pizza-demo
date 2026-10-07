@@ -8,13 +8,23 @@ import {
   simulateChargeback,
 } from "@/lib/payments/chargebacks";
 import { PaymentsError } from "@/lib/payments/errors";
-import { refundPayment } from "@/lib/payments/payments";
+import { capturePayment, getMerchantPayment, incrementAuthorization, refundPayment } from "@/lib/payments/payments";
 import { resolvePaymentSubmerchant } from "./session-submerchant";
+import { addTipToCheckoutPayment } from "./tips/write-tip";
 
 const RefundInput = z.object({
   paymentId: z.string().min(1),
   reason: z.enum(["userCancellation", "failedFulfillment", "buyerFraud", "other"]),
   partialCents: z.number().int().positive().optional(),
+  /** A franchise owner's store id. Ignored for a single-store login. */
+  location: z.string().optional(),
+});
+
+const TipAdjustInput = z.object({
+  paymentId: z.string().min(1),
+  /** Added to the authorization before capture. 0 captures the authorized amount as is. */
+  tipCents: z.number().int().nonnegative().max(100_000),
+  currency: z.string().min(3).max(3),
   /** A franchise owner's store id. Ignored for a single-store login. */
   location: z.string().optional(),
 });
@@ -75,6 +85,56 @@ export async function refundPaymentAction(input: z.input<typeof RefundInput>): P
     console.error("[dashboard] refund failed", err);
     return { ok: false, error: errorMessage(err, "The refund couldn't be sent. Please try again.") };
   }
+}
+
+export type TipAdjustResult =
+  | { ok: true; capturedCents: number }
+  /** `stage: "capture"` means the tip was already added, so a retry should capture without adding it again. */
+  | { ok: false; stage: "increment" | "capture"; error: string };
+
+/** Adds a tip to an authorized card payment, then captures it for the new subtotal. */
+export async function tipAdjustAndCaptureAction(
+  input: z.input<typeof TipAdjustInput>,
+): Promise<TipAdjustResult> {
+  const parsed = TipAdjustInput.safeParse(input);
+  if (!parsed.success) return { ok: false, stage: "increment", error: "Check the tip amount." };
+
+  const { paymentId, tipCents, currency, location } = parsed.data;
+  const submerchantId = await resolvePaymentSubmerchant(location);
+  if (!submerchantId) return { ok: false, stage: "increment", error: "Your session has ended. Sign in again." };
+
+  // The increment and the capture run one after the other: Coinflow serializes calls per payment.
+  let subtotalCents: number | undefined;
+  try {
+    if (tipCents > 0) {
+      const { totals } = await incrementAuthorization(submerchantId, paymentId, { cents: tipCents, currency });
+      subtotalCents = totals?.subtotal?.cents;
+    }
+    // A capture-only call, or an increment response without totals, reads the current amount.
+    subtotalCents ??= (await getMerchantPayment(submerchantId, paymentId)).totals?.subtotal?.cents;
+  } catch (err) {
+    console.error("[dashboard] tip adjust failed", err);
+    return { ok: false, stage: "increment", error: errorMessage(err, "The tip couldn't be added. Please try again.") };
+  }
+  if (!subtotalCents) {
+    const error = "The tip couldn't be confirmed. Reopen the payment and try again.";
+    return { ok: false, stage: tipCents > 0 ? "capture" : "increment", error };
+  }
+
+  try {
+    await capturePayment(submerchantId, paymentId, { cents: subtotalCents, currency });
+  } catch (err) {
+    console.error("[dashboard] capture failed", err);
+    const error = errorMessage(err, "The payment couldn't be captured. Please try again.");
+    return tipCents > 0
+      ? { ok: false, stage: "capture", error: `The tip was added, but the capture failed: ${error}` }
+      : { ok: false, stage: "increment", error };
+  }
+
+  await addTipToCheckoutPayment({ cfPaymentId: paymentId, tipCents, capturedCents: subtotalCents }).catch((err: unknown) =>
+    console.error("[tips] tip adjust ledger write failed", err),
+  );
+  return { ok: true, capturedCents: subtotalCents };
 }
 
 export async function simulateChargebackAction(

@@ -62,7 +62,7 @@ export function DetailsStep({
   alreadySubmitted: boolean;
   /** Once the application is under review the provider rejects any further edits. */
   locked: boolean;
-  onSubmitted: (progress: SubmerchantProgress) => void;
+  onSubmitted: (progress: SubmerchantProgress, values: FormValues) => void;
 }) {
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -111,7 +111,7 @@ export function DetailsStep({
       const result = await submitDetails(values);
       if (result.ok) {
         setDirty(false);
-        onSubmitted(result.progress);
+        onSubmitted(result.progress, values);
         return;
       }
       setErrors(result.fieldErrors ?? {});

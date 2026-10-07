@@ -1,20 +1,11 @@
 import type { CoinflowPayment } from "@/lib/payments/types";
 import { toOrder, type OrderMethod } from "@/features/dashboard/orders";
-import { PAYMENT_METHODS, type PaymentMethodKey } from "@/features/dashboard/payments-series";
+import { PAYMENT_METHODS } from "@/features/dashboard/payments-series";
 import { dayIn } from "@/features/dashboard/withdraw-range";
-import { formatBps, type ChargedRates, type FeeSchedule } from "./fee-schedule";
+import type { ChargedRates, FeeSchedule, StatementCharges } from "./fee-schedule";
 
-/** Payments whose funds reached the restaurant. Everything else is listed but not counted. */
+/** Payments whose funds reached the restaurant. Everything else is left off the statement. */
 const COUNTED_STATUSES = new Set(["SETTLED", "DEPOSITED"]);
-
-/** Coinflow processing fees, in the order the statement lists them. Shared labels with the payment drawer. */
-const PROCESSING_FEES = [
-  { key: "creditCardFees", merchantKey: "merchantPaidCreditCardFees", label: "Card processing" },
-  { key: "chargebackProtectionFees", merchantKey: "merchantPaidChargebackProtectionFees", label: "Chargeback protection" },
-  { key: "gasFees", merchantKey: "merchantPaidGasFees", label: "Network gas" },
-  { key: "fxFees", merchantKey: "merchantPaidFxFees", label: "FX" },
-  { key: "networkFees", merchantKey: "merchantPaidNetworkFees", label: "Network" },
-] as const;
 
 export type StatementLocation = {
   id: string;
@@ -31,39 +22,23 @@ export type StatementLine = {
   id: string;
   createdAt: string;
   method: string;
-  status: string;
   grossCents: number;
-  /** Processing fees added on top for the diner. Shown for transparency; they don't touch the restaurant's money. */
-  dinerFeesCents: number;
-  /** Processing fees the restaurant absorbed. */
+  /** Adora's take rate, netted by Coinflow. */
   processingCents: number;
-  saasCents: number;
-  royaltyCents: number;
+  /** The franchise owner's share. Statement only; Coinflow never sees it. */
+  franchiseFeeCents: number;
   netCents: number;
-};
-
-/** A payment that didn't move money (failed, pending, refunded…). */
-export type ExcludedLine = { id: string; createdAt: string; method: string; status: string; grossCents: number };
-
-export type FeeLine = { label: string; basis: string; cents: number };
-
-export type FeeGroup = {
-  payee: "Coinflow" | "Adora" | "Franchisor";
-  description: string;
-  lines: FeeLine[];
-  totalCents: number;
 };
 
 export type StatementTotals = {
   count: number;
   grossCents: number;
-  dinerFeesCents: number;
   processingCents: number;
+  franchiseFeeCents: number;
+  /** Monthly SaaS fee, prorated to the day. */
   saasCents: number;
-  royaltyCents: number;
+  /** Monthly per-device hardware fee, prorated to the day. */
   hardwareCents: number;
-  /** Everything deducted from gross. */
-  deductionsCents: number;
   netCents: number;
 };
 
@@ -76,11 +51,9 @@ export type DailyStatement = {
   franchise: StatementFranchise;
   location: StatementLocation;
   schedule: FeeSchedule;
+  charges: StatementCharges;
   lines: StatementLine[];
-  excluded: ExcludedLine[];
   totals: StatementTotals;
-  fees: FeeGroup[];
-  methods: { label: string; count: number; grossCents: number }[];
 };
 
 type Fields = Record<string, unknown>;
@@ -94,18 +67,23 @@ function totalsOf(payment: CoinflowPayment) {
   return (payment.totals ?? {}) as Fields;
 }
 
-/** The SaaS and royalty rates stamped on the payment at checkout, if any. */
+/** The SaaS and royalty rates stamped on the payment at checkout, if any. Older payments had no flat fee. */
 export function feeRatesOf(payment: CoinflowPayment): ChargedRates | undefined {
   const fees = ((payment as unknown as Fields).webhookInfo as Fields | undefined)?.fees as Fields | undefined;
   if (!fees || typeof fees.saasBps !== "number" || typeof fees.royaltyBps !== "number") return undefined;
-  return { version: String(fees.version ?? ""), saasBps: fees.saasBps, royaltyBps: fees.royaltyBps };
+  return {
+    version: String(fees.version ?? ""),
+    saasBps: fees.saasBps,
+    saasFixedCents: typeof fees.saasFixedCents === "number" ? fees.saasFixedCents : 0,
+    royaltyBps: fees.royaltyBps,
+  };
 }
 
 /**
  * The marketplace fee Coinflow took from this payment's subtotal for Adora
  * (SaaS + royalty). Read from whatever totals field Coinflow reports it in;
- * otherwise derived from the rates stamped at checkout, which is the same
- * `feePercentage` Coinflow applied. Payments from before fees were turned on
+ * otherwise derived from the rates stamped at checkout, which are the same
+ * `feePercentage` and `fixedFee` Coinflow applied. Payments from before fees were turned on
  * carry neither and owe nothing.
  */
 export function marketplaceFeeCents(payment: CoinflowPayment) {
@@ -116,14 +94,7 @@ export function marketplaceFeeCents(payment: CoinflowPayment) {
   const rates = feeRatesOf(payment);
   if (!rates) return 0;
   const subtotal = cents(totals.subtotal);
-  return Math.round((subtotal * (rates.saasBps + rates.royaltyBps)) / 10_000);
-}
-
-/** Splits the combined marketplace fee by the rates it was charged at, so the parts always add back up. */
-function splitMarketplaceFee(feeCents: number, rates: Pick<ChargedRates, "saasBps" | "royaltyBps">) {
-  const combined = rates.saasBps + rates.royaltyBps;
-  const saasCents = combined === 0 ? 0 : Math.round((feeCents * rates.saasBps) / combined);
-  return { saasCents, royaltyCents: feeCents - saasCents };
+  return Math.round((subtotal * (rates.saasBps + rates.royaltyBps)) / 10_000) + rates.saasFixedCents;
 }
 
 function methodLabel(method: OrderMethod) {
@@ -136,10 +107,9 @@ function methodLabel(method: OrderMethod) {
   return label;
 }
 
-function methodGroup(method: OrderMethod): string {
-  if (method.wallet === "apple-pay") return "Apple Pay";
-  if (method.wallet === "google-pay") return "Google Pay";
-  return PAYMENT_METHODS.find((option) => option.key === (method.key as PaymentMethodKey))?.label ?? "Other";
+function daysInMonth(day: string) {
+  const [year, month] = day.split("-").map(Number);
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
 export function statementNumber(franchiseId: string, locationId: string, day: string) {
@@ -150,6 +120,7 @@ export function statementNumber(franchiseId: string, locationId: string, day: st
 export function buildDailyStatement({
   payments,
   schedule,
+  charges,
   franchise,
   location,
   day,
@@ -158,111 +129,39 @@ export function buildDailyStatement({
 }: {
   payments: CoinflowPayment[];
   schedule: FeeSchedule;
+  charges: StatementCharges;
   franchise: StatementFranchise;
   location: StatementLocation;
   day: string;
   timeZone: string;
   now?: Date;
 }): DailyStatement {
-  const lines: StatementLine[] = [];
-  const excluded: ExcludedLine[] = [];
-  const processingByLabel = new Map<string, number>();
-  const methods = new Map<string, { count: number; grossCents: number }>();
-
-  const onDay = payments
+  const lines = payments
     .filter((payment) => dayIn(timeZone, new Date(payment.createdAt)) === day)
-    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
-
-  for (const payment of onDay) {
-    const order = toOrder(payment);
-    const totals = totalsOf(payment);
-    const status = order.status?.toUpperCase() ?? "UNKNOWN";
-    const grossCents = cents(totals.subtotal);
-    const method = methodLabel(order.method);
-
-    if (!COUNTED_STATUSES.has(status)) {
-      excluded.push({ id: payment.paymentId, createdAt: payment.createdAt, method, status, grossCents });
-      continue;
-    }
-
-    let dinerFeesCents = 0;
-    let processingCents = 0;
-    for (const fee of PROCESSING_FEES) {
-      const merchantPaid = cents(totals[fee.merchantKey]);
-      dinerFeesCents += cents(totals[fee.key]);
-      processingCents += merchantPaid;
-      if (merchantPaid) processingByLabel.set(fee.label, (processingByLabel.get(fee.label) ?? 0) + merchantPaid);
-    }
-
-    const { saasCents, royaltyCents } = splitMarketplaceFee(
-      marketplaceFeeCents(payment),
-      feeRatesOf(payment) ?? schedule,
-    );
-
-    lines.push({
-      id: payment.paymentId,
-      createdAt: payment.createdAt,
-      method,
-      status,
-      grossCents,
-      dinerFeesCents,
-      processingCents,
-      saasCents,
-      royaltyCents,
-      netCents: grossCents - processingCents - saasCents - royaltyCents,
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+    .flatMap((payment): StatementLine[] => {
+      const order = toOrder(payment);
+      if (!COUNTED_STATUSES.has(order.status?.toUpperCase() ?? "")) return [];
+      const grossCents = cents(totalsOf(payment).subtotal);
+      const processingCents = marketplaceFeeCents(payment);
+      const franchiseFeeCents = Math.round((grossCents * charges.franchiseFeeBps) / 10_000);
+      return [
+        {
+          id: payment.paymentId,
+          createdAt: payment.createdAt,
+          method: methodLabel(order.method),
+          grossCents,
+          processingCents,
+          franchiseFeeCents,
+          netCents: grossCents - processingCents - franchiseFeeCents,
+        },
+      ];
     });
 
-    const group = methodGroup(order.method);
-    const mix = methods.get(group) ?? { count: 0, grossCents: 0 };
-    methods.set(group, { count: mix.count + 1, grossCents: mix.grossCents + grossCents });
-  }
-
   const sum = (pick: (line: StatementLine) => number) => lines.reduce((total, line) => total + pick(line), 0);
-  const grossCents = sum((line) => line.grossCents);
-  const processingCents = sum((line) => line.processingCents);
-  const saasCents = sum((line) => line.saasCents);
-  const royaltyCents = sum((line) => line.royaltyCents);
-  const hardwareCents = schedule.hardwareDailyCents;
-  const deductionsCents = processingCents + saasCents + royaltyCents + hardwareCents;
-
-  const totals: StatementTotals = {
-    count: lines.length,
-    grossCents,
-    dinerFeesCents: sum((line) => line.dinerFeesCents),
-    processingCents,
-    saasCents,
-    royaltyCents,
-    hardwareCents,
-    deductionsCents,
-    netCents: grossCents - deductionsCents,
-  };
-
-  const fees: FeeGroup[] = [
-    {
-      payee: "Coinflow",
-      description:
-        totals.dinerFeesCents > 0
-          ? "Payment processing. Fees the diner paid at checkout are passed through and not deducted."
-          : "Payment processing.",
-      lines: [...processingByLabel].map(([label, amount]) => ({ label, basis: "Absorbed by restaurant", cents: amount })),
-      totalCents: processingCents,
-    },
-    {
-      payee: "Adora",
-      description: "Software and hardware program. SaaS is netted by Coinflow on each payment.",
-      lines: [
-        { label: "Adora SaaS fee", basis: `${formatBps(schedule.saasBps)} of gross sales`, cents: saasCents },
-        { label: "Hardware program", basis: "Flat daily, per location", cents: hardwareCents },
-      ],
-      totalCents: saasCents + hardwareCents,
-    },
-    {
-      payee: "Franchisor",
-      description: `Royalty to ${franchise.name}, netted by Coinflow on each payment and remitted by Adora.`,
-      lines: [{ label: "Franchise royalty", basis: `${formatBps(schedule.royaltyBps)} of gross sales`, cents: royaltyCents }],
-      totalCents: royaltyCents,
-    },
-  ];
+  const days = daysInMonth(day);
+  const saasCents = Math.round(charges.saasMonthlyCents / days);
+  const hardwareCents = Math.round((charges.hardwareMonthlyCentsPerDevice * charges.devicesPerLocation) / days);
 
   return {
     number: statementNumber(franchise.id, location.id, day),
@@ -272,11 +171,17 @@ export function buildDailyStatement({
     franchise,
     location,
     schedule,
+    charges,
     lines,
-    excluded,
-    totals,
-    fees,
-    methods: [...methods].map(([label, mix]) => ({ label, ...mix })).sort((a, b) => b.grossCents - a.grossCents),
+    totals: {
+      count: lines.length,
+      grossCents: sum((line) => line.grossCents),
+      processingCents: sum((line) => line.processingCents),
+      franchiseFeeCents: sum((line) => line.franchiseFeeCents),
+      saasCents,
+      hardwareCents,
+      netCents: sum((line) => line.netCents) - saasCents - hardwareCents,
+    },
   };
 }
 
@@ -291,25 +196,13 @@ export function buildFranchiseSummary(statements: DailyStatement[]): FranchiseSu
     (sum, { totals: next }) => ({
       count: sum.count + next.count,
       grossCents: sum.grossCents + next.grossCents,
-      dinerFeesCents: sum.dinerFeesCents + next.dinerFeesCents,
       processingCents: sum.processingCents + next.processingCents,
+      franchiseFeeCents: sum.franchiseFeeCents + next.franchiseFeeCents,
       saasCents: sum.saasCents + next.saasCents,
-      royaltyCents: sum.royaltyCents + next.royaltyCents,
       hardwareCents: sum.hardwareCents + next.hardwareCents,
-      deductionsCents: sum.deductionsCents + next.deductionsCents,
       netCents: sum.netCents + next.netCents,
     }),
-    {
-      count: 0,
-      grossCents: 0,
-      dinerFeesCents: 0,
-      processingCents: 0,
-      saasCents: 0,
-      royaltyCents: 0,
-      hardwareCents: 0,
-      deductionsCents: 0,
-      netCents: 0,
-    },
+    { count: 0, grossCents: 0, processingCents: 0, franchiseFeeCents: 0, saasCents: 0, hardwareCents: 0, netCents: 0 },
   );
   return { rows: statements.map(({ location, totals }) => ({ location, totals })), totals };
 }

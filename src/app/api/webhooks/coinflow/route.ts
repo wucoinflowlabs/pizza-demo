@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { describeWebhook } from "@/lib/devtools/labels";
 import { redact } from "@/lib/devtools/redact";
 import { recordEvent } from "@/lib/devtools/store";
+import { recordSettledWebhook } from "@/features/dashboard/tips/webhook-settled";
 
 type WebhookBody = {
   eventType?: string;
@@ -56,6 +57,13 @@ export async function POST(request: NextRequest) {
   });
 
   if (!verified) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // "Settled" fires when a card payment finishes capture, including Lamonica
+  // online checkouts. Write it to Supabase so the Payments tab + Tips page
+  // see the same payment the browser's onSuccess callback already recorded.
+  if (eventType === "Settled" && payload && typeof payload === "object") {
+    await recordSettledWebhook((payload as { data?: unknown }).data as never);
+  }
 
   if (OPERATOR_INVALIDATING_EVENTS.has(eventType)) {
     // Invalidate the cached /operator render so the next nav shows the fresh

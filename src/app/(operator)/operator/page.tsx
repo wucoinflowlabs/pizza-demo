@@ -3,7 +3,6 @@ import { listApplications } from "@/features/operator/actions";
 import { ADORA_CUSTOMERS } from "@/features/operator/adora-customers";
 import { ADORA_STORES } from "@/features/operator/adora-stores";
 import { OperatorConsole } from "@/features/operator/components/operator-console";
-import { SettlementSweep } from "@/features/operator/components/settlement-sweep";
 import {
   indexApplicationsByStore,
   storeApplicationKey,
@@ -56,15 +55,10 @@ export default async function OperatorPage() {
   });
 
   return (
-    <>
-      <OperatorConsole
-        customers={ADORA_CUSTOMERS}
-        stores={stores}
-        applications={applications}
-      />
-      <SettlementSweep
-        pending={listed.filter((application) => application.payouts === "missing").length}
-      />
-    </>
+    <OperatorConsole
+      customers={ADORA_CUSTOMERS}
+      stores={stores}
+      applications={applications}
+    />
   );
 }

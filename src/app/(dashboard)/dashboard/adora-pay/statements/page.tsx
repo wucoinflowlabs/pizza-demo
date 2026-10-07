@@ -4,7 +4,6 @@ import { enrolledLocations, getSessionFranchise, parseLocation } from "@/feature
 import { redirectUnlessAdoraPayReady } from "@/features/dashboard/pay-gate";
 import { dayIn } from "@/features/dashboard/withdraw-range";
 import { StatementsTable } from "@/features/statements/components/statements-table";
-import { feeScheduleFor } from "@/features/statements/fee-schedule";
 import { STATEMENT_TIME_ZONE, loadStatementDays } from "@/features/statements/load-statements";
 
 export const metadata: Metadata = { title: "Statements" };
@@ -30,7 +29,6 @@ export default async function StatementsPage({ searchParams }: PageProps<"/dashb
   const shared = {
     locations: options,
     location: selected?.id,
-    schedule: feeScheduleFor(franchise.customer.id),
   };
 
   return (

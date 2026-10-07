@@ -22,13 +22,7 @@ import {
   type SubmerchantProgress,
 } from "@/lib/payments/verification";
 import { getCurrentAccountId } from "@/lib/session";
-import {
-  alignSettlementWithParent,
-  type SettlementSetupState,
-} from "@/lib/settlement-setup";
 import { markFormSubmittedAction } from "@/features/dashboard/mark-form-action";
-
-export type { SettlementSetupState };
 
 type Failure = { ok: false; message: string; fieldErrors?: FieldErrors };
 
@@ -162,9 +156,3 @@ export async function submitApplication(): Promise<
   }
 }
 
-/** Points this business's settlement at Adora's wallet(s); see alignSettlementWithParent. */
-export async function setupSettlement(): Promise<{ state: SettlementSetupState }> {
-  const accountId = await getCurrentAccountId();
-  if (!accountId) return { state: "error" };
-  return { state: await alignSettlementWithParent({ submerchantId: accountId }) };
-}

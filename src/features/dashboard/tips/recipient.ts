@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const DEFAULT_TIP_RECIPIENT_CF_USER_ID = "teststaff";
 
-/** The Coinflow user id (e.g. "teststaff") every tip at checkout accrues to. */
+/** The Coinflow user id (e.g. "teststaff") in-person tips are cashed out to. */
 export function tipRecipientCfUserId(): string {
   return (process.env.TIP_RECIPIENT_CF_USER_ID?.trim() || DEFAULT_TIP_RECIPIENT_CF_USER_ID);
 }

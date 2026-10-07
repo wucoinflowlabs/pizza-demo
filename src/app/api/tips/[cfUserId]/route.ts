@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/tips/[cf
   if (!shop) {
     return NextResponse.json({
       staff: undefined,
-      summary: { todayCents: 0, weekCents: 0, unpaidCents: 0 },
+      summary: { todayCents: 0, unpaidCents: 0 },
       recent: [],
       timeZone: DEFAULT_TIME_ZONE,
     });
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/tips/[cf
   if (!staff) {
     return NextResponse.json({
       staff: undefined,
-      summary: { todayCents: 0, weekCents: 0, unpaidCents: 0 },
+      summary: { todayCents: 0, unpaidCents: 0 },
       recent: [],
       timeZone: shop.timezone ?? DEFAULT_TIME_ZONE,
     });

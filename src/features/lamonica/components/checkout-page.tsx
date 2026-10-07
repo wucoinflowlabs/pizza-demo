@@ -439,8 +439,6 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                     paymentId,
                     subtotalCents: cart.totals.totalCents,
                     tipCents,
-                    totalCents: totalWithTipCents,
-                    paymentMethod: "card",
                   }).catch((err: unknown) => console.error("[lamonica] tip ledger write failed", err));
                   setPaid({
                     paymentId,
