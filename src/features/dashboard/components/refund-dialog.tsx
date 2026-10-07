@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type RefObject } from "react";
+import { useState, useTransition, type RefObject } from "react";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Loader2Icon, RotateCcwIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -18,8 +18,6 @@ const REASONS: { value: RefundReason; label: string }[] = [
   { value: "buyerFraud", label: "Fraudulent purchase" },
   { value: "other", label: "Other" },
 ];
-
-type Quote = { subtotalCents: number; feeCents: number; totalCents: number };
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
@@ -49,7 +47,6 @@ export function RefundDialog({
   const [reason, setReason] = useState<RefundReason>("userCancellation");
   const [mode, setMode] = useState<"full" | "partial">("full");
   const [amount, setAmount] = useState("");
-  const [quotes, setQuotes] = useState<Record<string, Quote | string>>({});
   const [pending, startTransition] = useTransition();
 
   const partialCents = mode === "partial" ? toCents(amount) : undefined;
@@ -62,41 +59,8 @@ export function RefundDialog({
           : undefined
       : undefined;
   const ready = mode === "full" || (partialCents !== undefined && !amountError);
-  // A partial refund of the whole remaining amount is quoted and sent as a full refund.
+  // A partial refund of the whole remaining amount is sent as a full refund.
   const sendCents = mode === "partial" && partialCents !== remaining ? partialCents : undefined;
-  const quoteKey = ready ? `${detail.id}:${sendCents ?? "full"}` : undefined;
-  const quote = quoteKey ? quotes[quoteKey] : undefined;
-
-  useEffect(() => {
-    if (!open || !quoteKey || quotes[quoteKey] !== undefined) return;
-    const controller = new AbortController();
-    // Waits for typing to settle before asking for a quote.
-    const timer = setTimeout(async () => {
-      const params = new URLSearchParams();
-      if (sendCents !== undefined) params.set("partialAmount", String(sendCents));
-      if (locationId) params.set("location", locationId);
-      const query = params.size ? `?${params.toString()}` : "";
-      try {
-        const response = await fetch(
-          `/api/payments/${encodeURIComponent(detail.id)}/refund-quote${query}`,
-          { signal: controller.signal },
-        );
-        const body = await response.json();
-        setQuotes((current) => ({
-          ...current,
-          [quoteKey]: response.ok ? (body as Quote) : (body.error ?? "A refund quote isn't available right now."),
-        }));
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        console.error("[refund] quote failed", err);
-        setQuotes((current) => ({ ...current, [quoteKey]: "A refund quote isn't available right now." }));
-      }
-    }, 350);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [open, quoteKey, quotes, sendCents, detail.id, locationId]);
 
   const confirm = () =>
     startTransition(async () => {
@@ -122,7 +86,6 @@ export function RefundDialog({
     if (!next) {
       setMode("full");
       setAmount("");
-      setQuotes({});
     }
   };
 
@@ -212,34 +175,6 @@ export function RefundDialog({
               </>
             )}
           </div>
-
-          <dl className="flex flex-col gap-1.5 rounded-lg bg-muted/60 p-3">
-            {!ready ? (
-              <p className="text-muted-foreground">Enter an amount to see the refund total.</p>
-            ) : quote === undefined ? (
-              <p className="flex items-center gap-2 text-muted-foreground">
-                <Loader2Icon className="size-3.5 animate-spin" />
-                Getting a quote…
-              </p>
-            ) : typeof quote === "string" ? (
-              <p className="text-muted-foreground">{quote}</p>
-            ) : (
-              <>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Refund to customer</dt>
-                  <dd className="tabular-nums">{money(quote.subtotalCents, detail.currency)}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Processing fee</dt>
-                  <dd className="tabular-nums">{money(quote.feeCents, detail.currency)}</dd>
-                </div>
-                <div className="flex justify-between border-t border-foreground/10 pt-1.5 font-medium">
-                  <dt>Total charged to you</dt>
-                  <dd className="tabular-nums">{money(quote.totalCents, detail.currency)}</dd>
-                </div>
-              </>
-            )}
-          </dl>
 
           <div className="flex justify-end gap-2">
             <AlertDialog.Close render={<Button type="button" variant="outline" disabled={pending} />}>
