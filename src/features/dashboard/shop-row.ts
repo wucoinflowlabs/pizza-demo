@@ -42,7 +42,7 @@ export async function ensureShopRow({
 }
 
 /** When the Coinflow merchantId matches an Adora store, use its real address. */
-function locationFor(merchantId: string): { city: string; state: string } | undefined {
+export function locationFor(merchantId: string): { city: string; state: string } | undefined {
   for (const store of ADORA_STORES) {
     if (storeAccountId(store.customerId, store.id) === merchantId) return { city: store.city, state: store.state };
   }

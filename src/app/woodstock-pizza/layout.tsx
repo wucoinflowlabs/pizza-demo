@@ -4,11 +4,11 @@ import { ProtectionLoader } from "@/features/lamonica/components/protection-load
 import { ShopShell } from "@/features/lamonica/components/shop-shell";
 
 export const metadata: Metadata = {
-  title: { absolute: "Lamonica's NY Pizza" },
-  description: "Order New York pizza from Lamonica's in Westwood. Pickup on Gayley or delivery nearby.",
+  title: { absolute: "Woodstock's Pizza Davis" },
+  description: "Order pizza from Woodstock's in downtown Davis. Pickup on G Street or delivery nearby.",
 };
 
-export default function LamonicaLayout({ children }: LayoutProps<"/lamonica">) {
+export default function WoodstockPizzaLayout({ children }: LayoutProps<"/woodstock-pizza">) {
   return (
     <ShopShell>
       <ProtectionLoader env={lamonicaCheckoutEnv()} />

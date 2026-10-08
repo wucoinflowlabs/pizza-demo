@@ -4,7 +4,7 @@ import { AdoraPayActivity } from "@/features/dashboard/components/adora-pay-acti
 import { PaymentsChart } from "@/features/dashboard/components/payments-chart";
 import { RememberMerchantAccount } from "@/features/dashboard/components/remember-merchant-account";
 import { enrolledLocations, getSessionFranchise } from "@/features/dashboard/franchise";
-import { LAMONICA_EMAIL, LAMONICA_PREFILL } from "@/features/dashboard/lamonica";
+import { findShopBrand } from "@/features/dashboard/shop-logo";
 import { loadPaymentsSeries } from "@/features/dashboard/load-payments-series";
 import { PAYMENTS_PATH } from "@/features/dashboard/pay-gate";
 import { eventsFromSnapshot, isAdoraPayEnrolled, snapshotFromProgress } from "@/features/dashboard/pay-status";
@@ -55,10 +55,9 @@ export default async function AdoraPayPage({ searchParams }: PageProps<"/dashboa
     <PaymentsChart error={payments.message} />
   );
 
-  const snapshot = snapshotFromProgress(
-    progress,
-    login.email === LAMONICA_EMAIL ? String(LAMONICA_PREFILL.dba) : undefined,
-  );
+  // Lamonica's stores are shown as Woodstock's; other stores keep the account id.
+  const brand = findShopBrand(login);
+  const snapshot = snapshotFromProgress(progress, brand?.id === "lamonica" ? brand.name : undefined);
 
   return (
     <>

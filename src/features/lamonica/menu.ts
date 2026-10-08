@@ -3,12 +3,12 @@ export const LAMONICA_MERCHANT_ID = "adora-lamonica-westwood";
 export type LamonicaCoinflowEnv = "sandbox" | "prod" | "staging";
 
 export const SHOP = {
-  name: "Lamonica's NY Pizza",
-  phone: "(310) 208-8671",
-  phoneHref: "tel:+13102088671",
-  address: "1066 Gayley Avenue",
-  city: "Los Angeles, CA 90024",
-  email: "hello@lamonicasnypizza.com",
+  name: "Woodstock's Pizza",
+  phone: "(530) 757-2525",
+  phoneHref: "tel:+15307572525",
+  address: "238 G Street",
+  city: "Davis, CA 95616",
+  email: "hello@woodstocksdavis.com",
   hours: "Open daily, 11am – 2am",
 } as const;
 
@@ -31,30 +31,30 @@ export const MENU_SECTIONS: MenuSection[] = ["Campus favorites", "Slices", "Pies
 export const MENU: MenuItem[] = [
   {
     id: "combo-game-day",
-    name: "Big Ten Combo",
-    description: "Eight Clap pie, Pauley knots, and four fountain sodas. Packed for the couch before kickoff.",
+    name: "Game Day Combo",
+    description: "Aggie Pack pie, Aggie knots, and four fountain sodas. Packed for the couch before kickoff.",
     priceCents: 4600,
     compareAtCents: 5200,
     section: "Campus favorites",
   },
   {
     id: "slice-bruin",
-    name: "Bruin slice",
-    description: "Pepperoni, hot honey, and a rim that stays crisp on the walk down Gayley.",
+    name: "Aggie slice",
+    description: "Pepperoni, hot honey, and a rim that stays crisp on the ride down G Street.",
     priceCents: 625,
     section: "Campus favorites",
   },
   {
     id: "pie-eight-clap",
-    name: "Eight Clap pie",
-    description: "Pepperoni, fennel sausage, and mushrooms. Eight slices, named for the chant.",
+    name: "Aggie Pack pie",
+    description: "Pepperoni, fennel sausage, and mushrooms. Eight slices, loaded for the whole pack.",
     priceCents: 3200,
     section: "Campus favorites",
   },
   {
     id: "knots-pauley",
-    name: "Pauley knots",
-    description: "The garlic knots, extra butter, for the crowd leaving the arena.",
+    name: "Aggie knots",
+    description: "The garlic knots, extra butter, for the crowd leaving the Pavilion.",
     priceCents: 800,
     section: "Campus favorites",
   },

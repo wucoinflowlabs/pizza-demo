@@ -1,7 +1,8 @@
 import "server-only";
 import { LAMONICA_EMAIL, LAMONICA_PREFILL } from "@/features/dashboard/lamonica";
 import { isAdoraPayEnrolled } from "@/features/dashboard/pay-status";
-import { shopLogo } from "@/features/dashboard/shop-logo";
+import { displayShopName, shopLogo } from "@/features/dashboard/shop-logo";
+import { locationFor } from "@/features/dashboard/shop-row";
 import type { MerchantLogin } from "@/lib/merchant-logins";
 import { findSubmerchantIdByEmail } from "@/lib/payments/submerchants";
 import { getSubmerchantProgress } from "@/lib/payments/verification";
@@ -19,9 +20,13 @@ export async function getMerchantHomeProfile(login: MerchantLogin): Promise<Merc
   const shop = await loadShop(login.id);
   const named = login.name?.trim();
   if (shop) {
+    // The store's current address wins over the one saved when the row was seeded.
+    const store = login.cfSubmerchantId ? locationFor(login.cfSubmerchantId) : undefined;
     return profile({
       name: named || shop.name,
-      place: [shop.city, shop.region].filter(Boolean).join(", "),
+      place: store
+        ? `${store.city}, ${store.state}`
+        : [shop.city, shop.region].filter(Boolean).join(", "),
       payConnected,
       email: login.email,
     });
@@ -34,7 +39,7 @@ export async function getMerchantHomeProfile(login: MerchantLogin): Promise<Merc
   if (login.email === LAMONICA_EMAIL && typeof LAMONICA_PREFILL.dba === "string") {
     return profile({
       name: LAMONICA_PREFILL.dba,
-      place: "Los Angeles, CA",
+      place: "Davis, CA",
       payConnected,
       email: login.email,
     });
@@ -47,7 +52,8 @@ function profile({
   email,
   ...rest
 }: Omit<MerchantHomeProfile, "logo"> & { email: string }): MerchantHomeProfile {
-  return { ...rest, logo: shopLogo({ name: rest.name, email }) };
+  const shop = { name: rest.name, email };
+  return { ...rest, name: displayShopName(shop) ?? rest.name, logo: shopLogo(shop) };
 }
 
 /** True only when this login's Coinflow application is submitted and unblocked. */

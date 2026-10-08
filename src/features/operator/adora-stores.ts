@@ -12,7 +12,12 @@ export type AdoraStore = {
   phone: string | null;
 };
 
-export const ADORA_STORES = stores as AdoraStore[];
+/** Brands left out of the demo. Lamonica's stores are shown as Woodstock's, so the real Woodstock's list would duplicate it. */
+const HIDDEN_CUSTOMERS = new Set(["woodstocks"]);
+
+export const ADORA_STORES = (stores as AdoraStore[]).filter(
+  (store) => !HIDDEN_CUSTOMERS.has(store.customerId),
+);
 
 export function findAdoraStore(customerId: string, storeId: string | string[] | undefined) {
   if (typeof storeId !== "string") return undefined;

@@ -13,7 +13,7 @@ export function SiteFrame({
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const bare = pathname.startsWith("/dashboard") || pathname.startsWith("/lamonica");
+  const bare = pathname.startsWith("/dashboard") || pathname.startsWith("/woodstock-pizza");
 
   return (
     <div className="flex min-h-full flex-1 flex-col">

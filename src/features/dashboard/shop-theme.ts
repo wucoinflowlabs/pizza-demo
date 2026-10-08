@@ -35,15 +35,16 @@ export const DEFAULT_SHOP_THEME: ShopTheme = {
 };
 
 const THEMES: Record<string, ShopTheme> = {
+  // Woodstock's Pizza Davis, which uses the lamonica id.
   lamonica: {
-    fill: "#F0A020",
-    ink: "#181848",
-    accent: "#181848",
-    highlight: "#FFE08A",
-    surface: "#FFF6E2",
-    onFill: "#181848",
+    fill: "#FFA400",
+    ink: "#40321D",
+    accent: "#B80B00",
+    highlight: "#F8D44C",
+    surface: "#F5ECDC",
+    onFill: "#40321D",
     shadow: "transparent",
-    glow: "#FFE08A",
+    glow: "#F8D44C",
   },
   mmp: {
     fill: "#0E5A42",

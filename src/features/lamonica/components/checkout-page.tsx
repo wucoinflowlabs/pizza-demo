@@ -142,10 +142,10 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
     return (
       <div className="mx-auto w-full max-w-lg px-4 py-16 text-center sm:px-6">
         <h1 className="font-heading text-3xl font-bold">Your cart is empty</h1>
-        <p className="mt-2 text-[#181848]/70">Add something from the menu, then come back to pay.</p>
+        <p className="mt-2 text-[#40321D]/70">Add something from the menu, then come back to pay.</p>
         <Link
-          href="/lamonica"
-          className="mt-6 inline-flex h-11 items-center rounded-full bg-[#181848] px-5 font-semibold text-[#FFF6E2]"
+          href="/woodstock-pizza"
+          className="mt-6 inline-flex h-11 items-center rounded-full bg-[#40321D] px-5 font-semibold text-[#F5ECDC]"
         >
           Back to the menu
         </Link>
@@ -160,10 +160,10 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
 
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[320px_1fr] lg:items-start lg:py-12">
-      <aside className="rounded-3xl bg-white p-5 shadow-[0_22px_50px_-18px_rgba(24,24,72,0.55)] ring-2 ring-[#181848]/20 lg:sticky lg:top-28">
+      <aside className="rounded-3xl bg-white p-5 shadow-[0_22px_50px_-18px_rgba(64,50,29,0.55)] ring-2 ring-[#40321D]/20 lg:sticky lg:top-28">
         <h1 className="font-heading text-2xl font-bold">Your order</h1>
         {!cart.ready ? (
-          <p className="mt-3 text-sm text-[#181848]/70">Loading your order…</p>
+          <p className="mt-3 text-sm text-[#40321D]/70">Loading your order…</p>
         ) : (
           <>
             <ul className="mt-4 space-y-2 text-sm">
@@ -176,19 +176,19 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                 </li>
               ))}
             </ul>
-            <dl className="mt-4 space-y-1 border-t border-[#181848]/10 pt-4 text-sm">
+            <dl className="mt-4 space-y-1 border-t border-[#40321D]/10 pt-4 text-sm">
               <Row label="Subtotal" value={money(cart.totals.subtotalCents)} />
               <Row label="Tax" value={money(cart.totals.taxCents)} />
-              <div className="my-3 rounded-2xl bg-[#FFF6E2] p-3 ring-1 ring-[#F0A020]">
+              <div className="my-3 rounded-2xl bg-[#F5ECDC] p-3 ring-1 ring-[#FFA400]">
                 <label htmlFor="tip" className="text-sm font-bold">
                   Tip for the staff
                 </label>
                 <span
-                  className={`mt-2 flex h-12 w-full items-center gap-1 rounded-xl border-2 border-[#181848] bg-white px-3 shadow-sm focus-within:border-[#F0A020] focus-within:ring-2 focus-within:ring-[#F0A020]/50 ${
+                  className={`mt-2 flex h-12 w-full items-center gap-1 rounded-xl border-2 border-[#40321D] bg-white px-3 shadow-sm focus-within:border-[#FFA400] focus-within:ring-2 focus-within:ring-[#FFA400]/50 ${
                     tipLocked ? "opacity-70" : ""
                   }`}
                 >
-                  <span className="text-lg font-bold text-[#181848]/45">$</span>
+                  <span className="text-lg font-bold text-[#40321D]/45">$</span>
                   <input
                     id="tip"
                     inputMode="decimal"
@@ -205,7 +205,7 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                       setTipPercent(undefined);
                       setTipDollars(event.target.value);
                     }}
-                    className="w-full bg-transparent text-right text-lg font-bold tabular-nums outline-none placeholder:font-semibold placeholder:text-[#181848]/30 disabled:cursor-not-allowed"
+                    className="w-full bg-transparent text-right text-lg font-bold tabular-nums outline-none placeholder:font-semibold placeholder:text-[#40321D]/30 disabled:cursor-not-allowed"
                     aria-label="Tip amount in dollars"
                   />
                 </span>
@@ -224,8 +224,8 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                         }}
                         className={`h-10 rounded-full text-sm font-bold tabular-nums disabled:cursor-not-allowed ${
                           selected
-                            ? "bg-[#181848] text-[#FFF6E2] shadow-sm"
-                            : "bg-white text-[#181848] ring-1 ring-[#181848]/15 hover:ring-[#181848]/40"
+                            ? "bg-[#40321D] text-[#F5ECDC] shadow-sm"
+                            : "bg-white text-[#40321D] ring-1 ring-[#40321D]/15 hover:ring-[#40321D]/40"
                         }`}
                       >
                         {percent}%
@@ -239,7 +239,7 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                 <dd className="tabular-nums">{money(totalWithTipCents)}</dd>
               </div>
             </dl>
-            <Link href="/lamonica" className="mt-4 inline-block text-sm font-semibold underline">
+            <Link href="/woodstock-pizza" className="mt-4 inline-block text-sm font-semibold underline">
               Edit order
             </Link>
           </>
@@ -248,15 +248,15 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
 
       {step === "details" ? (
         <form
-          className="rounded-3xl bg-white p-5 ring-1 ring-[#181848]/10 sm:p-6"
+          className="rounded-3xl bg-white p-5 ring-1 ring-[#40321D]/10 sm:p-6"
           onSubmit={(event) => {
             event.preventDefault();
             void startPayment();
           }}
         >
           <h2 className="font-heading text-2xl font-bold">Where should it go?</h2>
-          <p className="mt-1 text-sm text-[#181848]/70">
-            Pickup is at {SHOP.address}. Delivery stays in Westwood.
+          <p className="mt-1 text-sm text-[#40321D]/70">
+            Pickup is at {SHOP.address}. Delivery stays in Davis.
           </p>
           <fieldset className="mt-5 flex gap-2">
             {(["pickup", "delivery"] as const).map((option) => (
@@ -264,8 +264,8 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                 key={option}
                 className={`flex-1 cursor-pointer rounded-2xl border px-3 py-3 text-center text-sm font-semibold ${
                   customer.fulfillment === option
-                    ? "border-[#181848] bg-[#181848] text-[#FFF6E2]"
-                    : "border-[#181848]/15"
+                    ? "border-[#40321D] bg-[#40321D] text-[#F5ECDC]"
+                    : "border-[#40321D]/15"
                 }`}
               >
                 <input
@@ -328,7 +328,7 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
           <button
             type="submit"
             disabled={!cart.ready || starting}
-            className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-[#F0A020] font-semibold text-[#181848] disabled:opacity-60"
+            className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-[#FFA400] font-semibold text-[#40321D] disabled:opacity-60"
           >
             Continue to payment
           </button>
@@ -338,7 +338,7 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <h2 className="font-heading text-2xl font-bold">Payment</h2>
-              <p className="mt-1 text-sm text-[#181848]/70">
+              <p className="mt-1 text-sm text-[#40321D]/70">
                 {customer.fulfillment === "pickup" ? "Pickup" : "Delivery"} for {customer.firstName}{" "}
                 {customer.lastName}. Card processing is added below.
               </p>
@@ -365,10 +365,10 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
               </button>
             </div>
           )}
-          {starting && <p className="text-sm text-[#181848]/70">Opening checkout…</p>}
+          {starting && <p className="text-sm text-[#40321D]/70">Opening checkout…</p>}
           {sessionKey && checkout && orderId && (
             <div
-              className="overflow-hidden rounded-3xl bg-white ring-1 ring-[#181848]/10"
+              className="overflow-hidden rounded-3xl bg-white ring-1 ring-[#40321D]/10"
               style={{ height: frameHeight }}
             >
               <CoinflowPurchase
@@ -385,10 +385,10 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
                 theme={{
                   font: "Inter",
                   style: MerchantStyle.Rounded,
-                  primary: "#181848",
+                  primary: "#40321D",
                   background: "#ffffff",
-                  textColor: "#181848",
-                  ctaColor: "#181848",
+                  textColor: "#40321D",
+                  ctaColor: "#40321D",
                 }}
                 customerInfo={{
                   firstName: customer.firstName.trim(),
@@ -462,19 +462,19 @@ export function CheckoutPage({ env }: { env: LamonicaCoinflowEnv }) {
 function Confirmation({ paid, onAnother }: { paid: PaidOrder; onAnother: () => void }) {
   return (
     <div className="mx-auto w-full max-w-lg px-4 py-16 sm:px-6">
-      <p className="text-xs font-semibold tracking-[0.18em] text-[#181848]/60 uppercase">Paid</p>
+      <p className="text-xs font-semibold tracking-[0.18em] text-[#40321D]/60 uppercase">Paid</p>
       <h1 className="mt-2 font-heading text-4xl font-bold">You&apos;re on the board.</h1>
-      <p className="mt-3 text-[#181848]/80">
+      <p className="mt-3 text-[#40321D]/80">
         Order {paid.orderId} is in for {money(paid.totalCents)}.{" "}
         {paid.fulfillment === "pickup"
           ? `We'll have it at ${SHOP.address}.`
           : `We're sending it to ${paid.address}.`}
       </p>
-      <p className="mt-4 text-xs text-[#181848]/50">Payment {paid.paymentId}</p>
+      <p className="mt-4 text-xs text-[#40321D]/50">Payment {paid.paymentId}</p>
       <Link
-        href="/lamonica"
+        href="/woodstock-pizza"
         onClick={onAnother}
-        className="mt-8 inline-flex h-11 items-center rounded-full bg-[#181848] px-5 font-semibold text-[#FFF6E2]"
+        className="mt-8 inline-flex h-11 items-center rounded-full bg-[#40321D] px-5 font-semibold text-[#F5ECDC]"
       >
         Order something else
       </Link>
@@ -484,9 +484,9 @@ function Confirmation({ paid, onAnother }: { paid: PaidOrder; onAnother: () => v
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between text-[#181848]/70">
+    <div className="flex justify-between text-[#40321D]/70">
       <dt>{label}</dt>
-      <dd className="tabular-nums text-[#181848]">{value}</dd>
+      <dd className="tabular-nums text-[#40321D]">{value}</dd>
     </div>
   );
 }
@@ -512,7 +512,7 @@ function Field({
   return (
     <label htmlFor={id} className="block text-sm font-semibold">
       {label}
-      {optional && <span className="ml-1 font-normal text-[#181848]/50">optional</span>}
+      {optional && <span className="ml-1 font-normal text-[#40321D]/50">optional</span>}
       <input
         id={id}
         type={type}
@@ -520,7 +520,7 @@ function Field({
         autoComplete={autoComplete}
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={error ? true : undefined}
-        className="mt-1 h-11 w-full rounded-xl border border-[#181848]/15 bg-[#FFF6E2] px-3 font-normal outline-none focus:border-[#181848]"
+        className="mt-1 h-11 w-full rounded-xl border border-[#40321D]/15 bg-[#F5ECDC] px-3 font-normal outline-none focus:border-[#40321D]"
       />
       {error && <span className="mt-1 block font-normal text-red-700">{error}</span>}
     </label>

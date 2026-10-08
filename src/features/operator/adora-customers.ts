@@ -17,12 +17,14 @@ const DEMO_EMAIL = "chris@coinflowlabs.app";
 
 export const ADORA_CUSTOMERS: AdoraCustomer[] = [
   {
+    // Shown as Woodstock's Pizza. The id stays "lamonica" because it is part of
+    // every Coinflow sub-merchant id (adora-lamonica-westwood), which can't be renamed.
     id: "lamonica",
-    name: "Lamonica's NY Pizza",
-    location: { city: "Los Angeles", state: "CA" },
-    phone: "(310) 208-8671",
-    websiteUrl: "https://lamonicasnypizza.com/",
-    logo: "/shops/lamonicas.png",
+    name: "Woodstock's Pizza",
+    location: { city: "Davis", state: "CA" },
+    phone: "(530) 757-2525",
+    websiteUrl: "https://woodstocksdavis.com/",
+    logo: "/shops/woodstocks.png",
   },
   {
     id: "mmp",
@@ -54,14 +56,6 @@ export const ADORA_CUSTOMERS: AdoraCustomer[] = [
     phone: "(916) 419-6666",
     websiteUrl: "https://pizzaguys.com/",
     logo: "/shops/pizza-guys.png",
-  },
-  {
-    id: "woodstocks",
-    name: "Woodstock's Pizza",
-    location: { city: "San Diego", state: "CA" },
-    phone: "(619) 265-0999",
-    websiteUrl: "https://woodstocksca.com/",
-    logo: "/shops/woodstocks.png",
   },
   {
     id: "pizzamyheart",

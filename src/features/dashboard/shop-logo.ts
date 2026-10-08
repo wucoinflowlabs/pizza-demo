@@ -1,7 +1,11 @@
 import { ADORA_CUSTOMERS, type AdoraCustomer } from "@/features/operator/adora-customers";
 
-const EXTRA_LOGOS: Record<string, string> = {
-  "lamonica's ny pizza": "/shops/lamonicas.png",
+/**
+ * Store names saved before a brand was renamed. Supabase still holds
+ * "Lamonica's NY Pizza" for the Westwood login; it now displays as Woodstock's.
+ */
+const LEGACY_NAMES: Record<string, string> = {
+  "lamonica's ny pizza": "lamonica",
 };
 
 /** Store logins carry the brand in the plus-address: chris+mmp-kjt3q@… */
@@ -22,7 +26,7 @@ export function findShopBrand({
   if (!key) return undefined;
   return (
     ADORA_CUSTOMERS.find((customer) => customer.name.toLowerCase() === key) ??
-    ADORA_CUSTOMERS.find((customer) => customer.logo === EXTRA_LOGOS[key])
+    ADORA_CUSTOMERS.find((customer) => customer.id === LEGACY_NAMES[key])
   );
 }
 
@@ -31,5 +35,12 @@ export function shopLogo(shop: {
   name?: string | null;
   email?: string | null;
 }): string | undefined {
-  return findShopBrand(shop)?.logo ?? EXTRA_LOGOS[shop.name?.trim().toLowerCase() ?? ""];
+  return findShopBrand(shop)?.logo;
+}
+
+/** Name to show for a signed-in shop. A renamed brand shows its current name, not the stored one. */
+export function displayShopName(shop: { name?: string | null; email?: string | null }): string | null {
+  const key = shop.name?.trim().toLowerCase();
+  if (key && LEGACY_NAMES[key]) return findShopBrand(shop)?.name ?? shop.name ?? null;
+  return shop.name ?? null;
 }

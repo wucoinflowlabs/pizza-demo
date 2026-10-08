@@ -31,6 +31,9 @@ export default async function OperatorPage() {
       : undefined;
     return {
       ...application,
+      // Display only; stores are already matched above. Lamonica's logins are
+      // shown as Woodstock's, so their lamonica emails are left out.
+      email: store?.customerId === "lamonica" ? undefined : application.email,
       store: store
         ? {
             name: customer?.name ?? store.customerId,

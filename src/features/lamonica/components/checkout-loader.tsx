@@ -8,7 +8,7 @@ const CheckoutPage = dynamic(
   {
     ssr: false,
     loading: () => (
-      <p className="px-4 py-16 text-center text-sm text-[#181848]/70">Loading checkout…</p>
+      <p className="px-4 py-16 text-center text-sm text-[#40321D]/70">Loading checkout…</p>
     ),
   },
 );
